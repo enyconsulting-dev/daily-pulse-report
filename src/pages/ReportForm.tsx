@@ -48,10 +48,36 @@ export default function ReportForm() {
   const handleSubmit = async () => {
     if (!selectedStaffId || !metrics) return;
 
-    // Validate all fields
+    // Validate all fields are filled with valid numbers
     const emptyFields = metrics.filter((m) => !metricValues[m.id]?.trim());
     if (emptyFields.length > 0) {
       toast.error("Please fill in all metric fields");
+      return;
+    }
+
+    // Validate all values are valid numbers
+    const invalidFields = metrics.filter((m) => {
+      const value = metricValues[m.id];
+      const numValue = parseFloat(value);
+      
+      if (isNaN(numValue)) {
+        return true;
+      }
+      
+      if (numValue < 0) {
+        return true;
+      }
+      
+      if (m.metric_type === "percentage" && (numValue < 0 || numValue > 100)) {
+        return true;
+      }
+      
+      return false;
+    });
+
+    if (invalidFields.length > 0) {
+      const fieldNames = invalidFields.map((f) => f.metric_name).join(", ");
+      toast.error(`Invalid values for: ${fieldNames}. Please enter valid numbers.`);
       return;
     }
 

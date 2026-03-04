@@ -23,7 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, UserX, UserCheck } from "lucide-react";
+import { Plus, UserX, UserCheck, Edit2, Save, X } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 
 export default function ManageStaff() {
@@ -32,9 +32,14 @@ export default function ManageStaff() {
   const { data: allStaff } = useAllStaffMembers();
 
   const [newName, setNewName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
   const [newDeptId, setNewDeptId] = useState<string>();
   const [filterDept, setFilterDept] = useState<string>("all");
   const [adding, setAdding] = useState(false);
+  
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editedName, setEditedName] = useState("");
+  const [editedEmail, setEditedEmail] = useState("");
 
   const filteredStaff =
     filterDept === "all"
@@ -49,12 +54,17 @@ export default function ManageStaff() {
     setAdding(true);
     const { error } = await supabase
       .from("staff_members")
-      .insert({ name: newName.trim(), department_id: newDeptId });
+      .insert({ 
+        name: newName.trim(), 
+        email: newEmail.trim() || null,
+        department_id: newDeptId 
+      });
     if (error) {
       toast.error(error.message);
     } else {
       toast.success(`${newName.trim()} added successfully`);
       setNewName("");
+      setNewEmail("");
       setNewDeptId(undefined);
       queryClient.invalidateQueries({ queryKey: ["all_staff_members"] });
       queryClient.invalidateQueries({ queryKey: ["staff_members"] });
@@ -75,6 +85,40 @@ export default function ManageStaff() {
     }
   };
 
+  const handleEdit = (id: string, currentName: string, currentEmail: string | null) => {
+    setEditingId(id);
+    setEditedName(currentName);
+    setEditedEmail(currentEmail || "");
+  };
+
+  const handleSave = async (id: string) => {
+    if (!editedName.trim()) {
+      toast.error("Name cannot be empty");
+      return;
+    }
+    const { error } = await supabase
+      .from("staff_members")
+      .update({ 
+        name: editedName.trim(),
+        email: editedEmail.trim() || null
+      })
+      .eq("id", id);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("Staff member updated successfully");
+      setEditingId(null);
+      queryClient.invalidateQueries({ queryKey: ["all_staff_members"] });
+      queryClient.invalidateQueries({ queryKey: ["staff_members"] });
+    }
+  };
+
+  const handleCancel = () => {
+    setEditingId(null);
+    setEditedName("");
+    setEditedEmail("");
+  };
+
   return (
     <AppLayout>
       <div className="mx-auto max-w-3xl animate-fade-in">
@@ -93,35 +137,48 @@ export default function ManageStaff() {
             <CardTitle className="text-lg">Add New Staff Member</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col gap-4 sm:flex-row">
-              <div className="flex-1 space-y-1.5">
-                <Label>Full Name</Label>
-                <Input
-                  placeholder="Enter staff name"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                />
+            <div className="flex flex-col gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label>Full Name</Label>
+                  <Input
+                    placeholder="Enter staff name"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Email</Label>
+                  <Input
+                    type="email"
+                    placeholder="Enter staff email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                  />
+                </div>
               </div>
-              <div className="flex-1 space-y-1.5">
-                <Label>Department</Label>
-                <Select value={newDeptId} onValueChange={setNewDeptId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select department..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments?.map((d) => (
-                      <SelectItem key={d.id} value={d.id}>
-                        {d.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-end">
-                <Button onClick={handleAdd} disabled={adding}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add
-                </Button>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label>Department</Label>
+                  <Select value={newDeptId} onValueChange={setNewDeptId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select department..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments?.map((d) => (
+                        <SelectItem key={d.id} value={d.id}>
+                          {d.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-end">
+                  <Button onClick={handleAdd} disabled={adding} className="w-full">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add
+                  </Button>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -150,6 +207,7 @@ export default function ManageStaff() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
                   <TableHead>Department</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Action</TableHead>
@@ -158,7 +216,30 @@ export default function ManageStaff() {
               <TableBody>
                 {filteredStaff?.map((staff) => (
                   <TableRow key={staff.id}>
-                    <TableCell className="font-medium">{staff.name}</TableCell>
+                    <TableCell className="font-medium">
+                      {editingId === staff.id ? (
+                        <Input
+                          value={editedName}
+                          onChange={(e) => setEditedName(e.target.value)}
+                          className="h-8"
+                        />
+                      ) : (
+                        staff.name
+                      )}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {editingId === staff.id ? (
+                        <Input
+                          type="email"
+                          value={editedEmail}
+                          onChange={(e) => setEditedEmail(e.target.value)}
+                          placeholder="email@example.com"
+                          className="h-8"
+                        />
+                      ) : (
+                        staff.email || "—"
+                      )}
+                    </TableCell>
                     <TableCell className="text-muted-foreground">
                       {staff.departments?.name}
                     </TableCell>
@@ -168,29 +249,58 @@ export default function ManageStaff() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleActive(staff.id, staff.is_active)}
-                      >
-                        {staff.is_active ? (
-                          <>
-                            <UserX className="mr-1 h-4 w-4" />
-                            Deactivate
-                          </>
-                        ) : (
-                          <>
-                            <UserCheck className="mr-1 h-4 w-4" />
-                            Activate
-                          </>
-                        )}
-                      </Button>
+                      {editingId === staff.id ? (
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleSave(staff.id)}
+                          >
+                            <Save className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleCancel}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(staff.id, staff.name, staff.email)}
+                          >
+                            <Edit2 className="mr-1 h-4 w-4" />
+                            Edit
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleActive(staff.id, staff.is_active)}
+                          >
+                            {staff.is_active ? (
+                              <>
+                                <UserX className="mr-1 h-4 w-4" />
+                                Deactivate
+                              </>
+                            ) : (
+                              <>
+                                <UserCheck className="mr-1 h-4 w-4" />
+                                Activate
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
                 {!filteredStaff?.length && (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                       No staff members found. Add some above!
                     </TableCell>
                   </TableRow>
