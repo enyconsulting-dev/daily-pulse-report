@@ -19,6 +19,7 @@ export type Database = {
           blockers: string | null
           completed_tasks: string | null
           created_at: string
+          department_id: string | null
           id: string
           report_date: string
           staff_id: string
@@ -28,6 +29,7 @@ export type Database = {
           blockers?: string | null
           completed_tasks?: string | null
           created_at?: string
+          department_id?: string | null
           id?: string
           report_date?: string
           staff_id: string
@@ -37,12 +39,20 @@ export type Database = {
           blockers?: string | null
           completed_tasks?: string | null
           created_at?: string
+          department_id?: string | null
           id?: string
           report_date?: string
           staff_id?: string
           uncompleted_tasks?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "daily_reports_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "daily_reports_staff_id_fkey"
             columns: ["staff_id"]
@@ -144,10 +154,45 @@ export type Database = {
           },
         ]
       }
+      staff_department_assignments: {
+        Row: {
+          created_at: string | null
+          department_id: string
+          id: string
+          staff_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          department_id: string
+          id?: string
+          staff_id: string
+        }
+        Update: {
+          created_at?: string | null
+          department_id?: string
+          id?: string
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_department_assignments_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_department_assignments_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_members: {
         Row: {
           created_at: string
-          department_id: string
           email: string | null
           id: string
           is_active: boolean
@@ -155,7 +200,6 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          department_id: string
           email?: string | null
           id?: string
           is_active?: boolean
@@ -163,21 +207,12 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          department_id?: string
           email?: string | null
           id?: string
           is_active?: boolean
           name?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "staff_members_department_id_fkey"
-            columns: ["department_id"]
-            isOneToOne: false
-            referencedRelation: "departments"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {

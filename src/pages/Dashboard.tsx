@@ -93,7 +93,9 @@ export default function Dashboard() {
   const filteredStaffList = useMemo(() => {
     if (!allStaff) return [];
     if (selectedDept === "all") return allStaff;
-    return allStaff.filter((s) => s.department_id === selectedDept);
+    return allStaff.filter((s) =>
+      s.assigned_departments?.some((d) => d.id === selectedDept)
+    );
   }, [allStaff, selectedDept]);
 
   const { from, to } = getDateRange(datePreset, customFrom, customTo);
@@ -110,10 +112,12 @@ export default function Dashboard() {
           id,
           report_date,
           created_at,
+          department_id,
           completed_tasks,
           blockers,
           uncompleted_tasks,
-          staff_members!inner(id, name, department_id, departments(name)),
+          staff_members(id, name, email),
+          departments(id, name),
           report_entries(value, department_metrics(metric_name, metric_type, sort_order))
         `
         )
@@ -122,7 +126,7 @@ export default function Dashboard() {
         .order("report_date", { ascending: false });
 
       if (selectedDept !== "all") {
-        query = query.eq("staff_members.department_id", selectedDept);
+        query = query.eq("department_id", selectedDept);
       }
       if (selectedStaff !== "all") {
         query = query.eq("staff_id", selectedStaff);
@@ -146,7 +150,7 @@ export default function Dashboard() {
     // Department distribution (pie chart)
     const deptCounts: Record<string, number> = {};
     reports.forEach((r) => {
-      const deptName = (r.staff_members as any)?.departments?.name || "Unknown";
+      const deptName = (r.departments as any)?.name || "Unknown";
       deptCounts[deptName] = (deptCounts[deptName] || 0) + 1;
     });
 
@@ -161,7 +165,7 @@ export default function Dashboard() {
     const metricsByDept: Record<string, Array<{ name: string; value: number }>> = {};
     
     reports.forEach((r) => {
-      const deptName = (r.staff_members as any)?.departments?.name || "Unknown";
+      const deptName = (r.departments as any)?.name || "Unknown";
       if (!metricsByDept[deptName]) {
         metricsByDept[deptName] = [];
       }
@@ -225,7 +229,7 @@ export default function Dashboard() {
     // Department-specific metrics aggregation
     const departmentMetrics: Record<string, Array<{ name: string; value: number }>> = {};
     reports.forEach((r) => {
-      const deptName = (r.staff_members as any)?.departments?.name || "Unknown";
+      const deptName = (r.departments as any)?.name || "Unknown";
       if (!departmentMetrics[deptName]) {
         departmentMetrics[deptName] = [];
       }
@@ -268,13 +272,14 @@ export default function Dashboard() {
     const headers = ["Staff Name", "Department", "Date", ...metricNames];
     const rows = reports.map((r) => {
       const staff = r.staff_members as any;
+      const dept = r.departments as any;
       const values = metricNames.map((mn) => {
         const entry = r.report_entries?.find(
           (e: any) => e.department_metrics?.metric_name === mn
         ) as any;
         return entry ? entry.value : "";
       });
-      return [staff.name, staff.departments?.name || "", r.report_date, ...values];
+      return [staff.name, dept?.name || "", r.report_date, ...values];
     });
 
     const csv = [headers, ...rows].map((row) => row.join(",")).join("\n");
@@ -656,6 +661,7 @@ export default function Dashboard() {
           <div className="space-y-6">
             {reports.map((report) => {
               const staff = report.staff_members as any;
+              const dept = report.departments as any;
               const entries = (report.report_entries || []) as any[];
               const sorted = [...entries].sort(
                 (a, b) =>
@@ -674,7 +680,7 @@ export default function Dashboard() {
                         </p>
                       </div>
                       <span className="rounded-md bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                        {staff.departments?.name}
+                        {dept?.name}
                       </span>
                     </div>
                   </CardHeader>

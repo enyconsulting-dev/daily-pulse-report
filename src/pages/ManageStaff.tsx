@@ -33,7 +33,7 @@ export default function ManageStaff() {
 
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
-  const [newDeptId, setNewDeptId] = useState<string>();
+  const [newDeptIds, setNewDeptIds] = useState<string[]>([]);
   const [filterDept, setFilterDept] = useState<string>("all");
   const [adding, setAdding] = useState(false);
   
@@ -44,30 +44,49 @@ export default function ManageStaff() {
   const filteredStaff =
     filterDept === "all"
       ? allStaff
-      : allStaff?.filter((s) => s.department_id === filterDept);
+      : allStaff?.filter((s) =>
+          s.assigned_departments?.some((d) => d.id === filterDept)
+        );
 
   const handleAdd = async () => {
-    if (!newName.trim() || !newDeptId) {
-      toast.error("Please enter a name and select a department");
+    if (!newName.trim() || newDeptIds.length === 0) {
+      toast.error("Please enter a name and select at least one department");
       return;
     }
     setAdding(true);
-    const { error } = await supabase
-      .from("staff_members")
-      .insert({ 
-        name: newName.trim(), 
-        email: newEmail.trim() || null,
-        department_id: newDeptId 
-      });
-    if (error) {
-      toast.error(error.message);
-    } else {
+    try {
+      // Create staff member
+      const { data: staffData, error: staffError } = await supabase
+        .from("staff_members")
+        .insert({ 
+          name: newName.trim(), 
+          email: newEmail.trim() || null,
+        })
+        .select()
+        .single();
+
+      if (staffError) throw staffError;
+
+      // Create department assignments
+      const assignments = newDeptIds.map((deptId) => ({
+        staff_id: staffData.id,
+        department_id: deptId,
+      }));
+
+      const { error: assignmentError } = await supabase
+        .from("staff_department_assignments")
+        .insert(assignments);
+
+      if (assignmentError) throw assignmentError;
+
       toast.success(`${newName.trim()} added successfully`);
       setNewName("");
       setNewEmail("");
-      setNewDeptId(undefined);
+      setNewDeptIds([]);
       queryClient.invalidateQueries({ queryKey: ["all_staff_members"] });
       queryClient.invalidateQueries({ queryKey: ["staff_members"] });
+    } catch (error: any) {
+      toast.error(error.message);
     }
     setAdding(false);
   };
@@ -158,27 +177,49 @@ export default function ManageStaff() {
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label>Department</Label>
-                  <Select value={newDeptId} onValueChange={setNewDeptId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select department..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {departments?.map((d) => (
-                        <SelectItem key={d.id} value={d.id}>
-                          {d.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              <div className="space-y-1.5">
+                <Label>Departments (select one or more)</Label>
+                <div className="border rounded-md p-3 space-y-2 bg-background">
+                  {departments?.map((d) => (
+                    <div key={d.id} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id={`dept-${d.id}`}
+                        checked={newDeptIds.includes(d.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setNewDeptIds([...newDeptIds, d.id]);
+                          } else {
+                            setNewDeptIds(newDeptIds.filter((id) => id !== d.id));
+                          }
+                        }}
+                        className="h-4 w-4 rounded border-gray-300"
+                      />
+                      <Label
+                        htmlFor={`dept-${d.id}`}
+                        className="text-sm font-normal cursor-pointer"
+                      >
+                        {d.name}
+                      </Label>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex items-end">
-                  <Button onClick={handleAdd} disabled={adding} className="w-full">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add
-                  </Button>
-                </div>
+                {newDeptIds.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {newDeptIds.map((deptId) => (
+                      <Badge key={deptId} variant="secondary">
+                        {departments?.find((d) => d.id === deptId)?.name}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="flex items-end">
+                <Button onClick={handleAdd} disabled={adding} className="w-full">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add
+                </Button>
+              </div>
               </div>
             </div>
           </CardContent>
@@ -241,7 +282,13 @@ export default function ManageStaff() {
                       )}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {staff.departments?.name}
+                      <div className="flex flex-wrap gap-1">
+                        {staff.assigned_departments?.map((dept) => (
+                          <Badge key={dept.id} variant="outline" className="text-xs">
+                            {dept.name}
+                          </Badge>
+                        ))}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Badge variant={staff.is_active ? "default" : "secondary"}>

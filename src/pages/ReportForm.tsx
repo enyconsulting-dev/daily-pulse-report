@@ -3,9 +3,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   useDepartments,
-  useStaffMembers,
+  useAllStaffMembers,
   useDepartmentMetrics,
   useCheckTodayReport,
+  useStaffAssignedDepartments,
 } from "@/hooks/useStaffAndMetrics";
 import {
   Select,
@@ -26,27 +27,34 @@ import AppLayout from "@/components/AppLayout";
 export default function ReportForm() {
   const queryClient = useQueryClient();
   const [selectedStaffId, setSelectedStaffId] = useState<string>();
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>();
   const [metricValues, setMetricValues] = useState<Record<string, string>>({});
   const [completedNotes, setCompletedNotes] = useState<string>("");
   const [blockerNotes, setBlockerNotes] = useState<string>("");
   const [uncompletedNotes, setUncompletedNotes] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
 
-  const { data: departments } = useDepartments();
-  const { data: allStaff } = useStaffMembers();
-
-  const selectedStaff = allStaff?.find((s) => s.id === selectedStaffId);
-  const departmentId = selectedStaff?.department_id;
-  const departmentName = selectedStaff?.departments?.name;
-
-  const { data: metrics } = useDepartmentMetrics(departmentId);
-  const { data: todayReport, isLoading: checkingReport } =
+  const { data: allStaff } = useAllStaffMembers();
+  const { data: assignedDepartments } = useStaffAssignedDepartments(selectedStaffId);
+  const { data: metrics } = useDepartmentMetrics(selectedDepartmentId);
+  const { data: todayReports, isLoading: checkingReport } =
     useCheckTodayReport(selectedStaffId);
 
-  const alreadySubmitted = !!todayReport;
+  const selectedStaff = allStaff?.find((s) => s.id === selectedStaffId);
+  const selectedDept = assignedDepartments?.find((d) => d.id === selectedDepartmentId);
+  
+  // Check if already submitted for this specific department
+  const alreadySubmittedForDept = todayReports?.some(
+    (r: any) => r.department_id === selectedDepartmentId
+  ) || false;
+
+  // Get departments that still need reports
+  const departmentsNeedingReports = assignedDepartments?.filter(
+    (d) => !todayReports?.some((r: any) => r.department_id === d.id)
+  ) || [];
 
   const handleSubmit = async () => {
-    if (!selectedStaffId || !metrics) return;
+    if (!selectedStaffId || !selectedDepartmentId || !metrics) return;
 
     // Validate all fields are filled with valid numbers
     const emptyFields = metrics.filter((m) => !metricValues[m.id]?.trim());
@@ -87,6 +95,7 @@ export default function ReportForm() {
         .from("daily_reports")
         .insert({ 
           staff_id: selectedStaffId,
+          department_id: selectedDepartmentId,
           completed_tasks: completedNotes,
           blockers: blockerNotes,
           uncompleted_tasks: uncompletedNotes,
@@ -96,7 +105,7 @@ export default function ReportForm() {
 
       if (reportError) {
         if (reportError.code === "23505") {
-          toast.error("You have already submitted a report for today");
+          toast.error("You have already submitted a report for this department today");
           return;
         }
         throw reportError;
@@ -119,6 +128,7 @@ export default function ReportForm() {
       setCompletedNotes("");
       setBlockerNotes("");
       setUncompletedNotes("");
+      setSelectedDepartmentId(undefined);
       queryClient.invalidateQueries({ queryKey: ["today_report"] });
     } catch (err: any) {
       toast.error(err.message || "Failed to submit report");
@@ -150,6 +160,7 @@ export default function ReportForm() {
                 value={selectedStaffId}
                 onValueChange={(v) => {
                   setSelectedStaffId(v);
+                  setSelectedDepartmentId(undefined);
                   setMetricValues({});
                 }}
               >
@@ -166,16 +177,75 @@ export default function ReportForm() {
               </Select>
             </div>
 
-            {selectedStaff && (
-              <div className="rounded-lg bg-secondary px-4 py-3">
-                <p className="text-sm text-muted-foreground">Department</p>
-                <p className="font-medium text-foreground">{departmentName}</p>
+            {selectedStaff && assignedDepartments && assignedDepartments.length > 0 && (
+              <>
+                <div className="space-y-2">
+                  <Label>Select Department</Label>
+                  <Select
+                    value={selectedDepartmentId}
+                    onValueChange={(v) => {
+                      setSelectedDepartmentId(v);
+                      setMetricValues({});
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose your department..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {assignedDepartments.map((dept) => {
+                        const submitted = todayReports?.some(
+                          (r: any) => r.department_id === dept.id
+                        );
+                        return (
+                          <SelectItem key={dept.id} value={dept.id}>
+                            {dept.name} {submitted ? "✓ (Submitted)" : ""}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {assignedDepartments.length > 1 && (
+                  <div className="rounded-lg bg-blue-50 px-4 py-3 border border-blue-200">
+                    <p className="text-sm font-medium text-blue-900 mb-2">
+                      Assigned Departments ({assignedDepartments.length})
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {assignedDepartments.map((dept) => {
+                        const submitted = todayReports?.some(
+                          (r: any) => r.department_id === dept.id
+                        );
+                        return (
+                          <span
+                            key={dept.id}
+                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
+                              submitted
+                                ? "bg-green-100 text-green-800"
+                                : "bg-orange-100 text-orange-800"
+                            }`}
+                          >
+                            {dept.name} {submitted ? "✓" : "✗"}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {selectedStaff && assignedDepartments && assignedDepartments.length === 0 && (
+              <div className="rounded-lg bg-orange-50 px-4 py-3 border border-orange-200">
+                <p className="text-sm text-orange-800">
+                  No departments assigned. Please contact your administrator.
+                </p>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {selectedStaff && alreadySubmitted && (
+        {selectedStaff && selectedDepartmentId && alreadySubmittedForDept && (
           <Card className="mt-6 border-success/30 bg-success/5">
             <CardContent className="flex items-center gap-3 py-6">
               <CheckCircle2 className="h-6 w-6 text-success" />
@@ -184,19 +254,23 @@ export default function ReportForm() {
                   Report already submitted
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  You've already submitted your report for today. Come back
-                  tomorrow!
+                  You've already submitted your report for {selectedDept?.name} today.
+                  {departmentsNeedingReports.length > 0 && (
+                    <> Consider submitting for other departments: {departmentsNeedingReports
+                      .map((d) => d.name)
+                      .join(", ")}</>
+                  )}
                 </p>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {selectedStaff && !alreadySubmitted && metrics && (
+        {selectedStaff && selectedDepartmentId && !alreadySubmittedForDept && metrics && (
           <Card className="mt-6 animate-fade-in">
             <CardHeader>
               <CardTitle className="text-lg">
-                Today's Metrics — {departmentName}
+                Today's Metrics — {selectedDept?.name}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -230,7 +304,7 @@ export default function ReportForm() {
           </Card>
         )}
 
-        {selectedStaff && !alreadySubmitted && metrics && (
+        {selectedStaff && selectedDepartmentId && !alreadySubmittedForDept && metrics && (
           <Card className="mt-6 animate-fade-in">
             <CardHeader>
               <CardTitle className="text-lg">Daily Notes</CardTitle>
