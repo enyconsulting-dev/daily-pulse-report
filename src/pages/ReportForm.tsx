@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { CheckCircle2, Send } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
@@ -26,6 +27,9 @@ export default function ReportForm() {
   const queryClient = useQueryClient();
   const [selectedStaffId, setSelectedStaffId] = useState<string>();
   const [metricValues, setMetricValues] = useState<Record<string, string>>({});
+  const [completedNotes, setCompletedNotes] = useState<string>("");
+  const [blockerNotes, setBlockerNotes] = useState<string>("");
+  const [uncompletedNotes, setUncompletedNotes] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
 
   const { data: departments } = useDepartments();
@@ -55,7 +59,12 @@ export default function ReportForm() {
     try {
       const { data: report, error: reportError } = await supabase
         .from("daily_reports")
-        .insert({ staff_id: selectedStaffId })
+        .insert({ 
+          staff_id: selectedStaffId,
+          completed_tasks: completedNotes,
+          blockers: blockerNotes,
+          uncompleted_tasks: uncompletedNotes,
+        })
         .select("id")
         .single();
 
@@ -81,6 +90,9 @@ export default function ReportForm() {
 
       toast.success("Report submitted successfully!");
       setMetricValues({});
+      setCompletedNotes("");
+      setBlockerNotes("");
+      setUncompletedNotes("");
       queryClient.invalidateQueries({ queryKey: ["today_report"] });
     } catch (err: any) {
       toast.error(err.message || "Failed to submit report");
@@ -188,9 +200,60 @@ export default function ReportForm() {
                   />
                 </div>
               ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {selectedStaff && !alreadySubmitted && metrics && (
+          <Card className="mt-6 animate-fade-in">
+            <CardHeader>
+              <CardTitle className="text-lg">Daily Notes</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Share your daily progress and challenges
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="completed-notes" className="text-sm font-medium">
+                  ✓ Completed Tasks for Today
+                </Label>
+                <Textarea
+                  id="completed-notes"
+                  placeholder="What did you accomplish today? List your completed tasks..."
+                  value={completedNotes}
+                  onChange={(e) => setCompletedNotes(e.target.value)}
+                  className="min-h-24 resize-none"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="blocker-notes" className="text-sm font-medium">
+                  ⚠️ Blockers for Today
+                </Label>
+                <Textarea
+                  id="blocker-notes"
+                  placeholder="What challenges or blockers did you encounter? Include any issues that prevented progress..."
+                  value={blockerNotes}
+                  onChange={(e) => setBlockerNotes(e.target.value)}
+                  className="min-h-24 resize-none"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="uncompleted-notes" className="text-sm font-medium">
+                  → Uncompleted Tasks (Carry Over)
+                </Label>
+                <Textarea
+                  id="uncompleted-notes"
+                  placeholder="What tasks are still in progress? List items that need to be carried over to tomorrow..."
+                  value={uncompletedNotes}
+                  onChange={(e) => setUncompletedNotes(e.target.value)}
+                  className="min-h-24 resize-none"
+                />
+              </div>
 
               <Button
-                className="mt-4 w-full"
+                className="mt-6 w-full"
                 size="lg"
                 onClick={handleSubmit}
                 disabled={submitting}

@@ -66,6 +66,9 @@ INSERT INTO public.departments (id, name) VALUES
   ('d1000000-0000-0000-0000-000000000005', 'Programs/Operations'),
   ('d1000000-0000-0000-0000-000000000006', 'Graphics/Funnel Designer'),
   ('d1000000-0000-0000-0000-000000000007', 'Videographer');
+  ('d1000000-0000-0000-0000-000000000008', 'Sales/Enrollment Specialist');
+  ('d1000000-0000-0000-0000-000000000009', 'Programs/Operations Manager');
+
 
 -- Seed metrics for Business Support Specialist
 INSERT INTO public.department_metrics (department_id, metric_name, metric_type, sort_order) VALUES
@@ -147,3 +150,25 @@ INSERT INTO public.department_metrics (department_id, metric_name, metric_type, 
   ('d1000000-0000-0000-0000-000000000007', 'Number of long form videos produced/edited', 'number', 2),
   ('d1000000-0000-0000-0000-000000000007', 'Number of short form videos produced/edited', 'number', 3),
   ('d1000000-0000-0000-0000-000000000007', '% of projects delivered on/before deadline', 'percentage', 4);
+
+-- Seed departments (added later for new department)
+INSERT INTO public.departments (id, name) VALUES
+  ('d1000000-0000-0000-0000-000000000008', 'Sales/Enrollment Specialist');
+
+-- Seed metrics for Sales/Enrollment Specialist
+INSERT INTO public.department_metrics (department_id, metric_name, metric_type, sort_order) VALUES
+  ('d1000000-0000-0000-0000-000000000008', 'Total outreach to new leads via phone calls', 'number', 1),
+  ('d1000000-0000-0000-0000-000000000008', 'Total outreach to new leads via WhatsApp DMs/Emails', 'number', 2),
+  ('d1000000-0000-0000-0000-000000000008', 'Number of inquiries received (Calls/WhatsApp/Calendar booking)', 'number', 3),
+  ('d1000000-0000-0000-0000-000000000008', 'Number of actual conversations with new leads (outreach/inquiries)', 'number', 4),
+  ('d1000000-0000-0000-0000-000000000008', 'Number of follow-ups with warm/hot leads', 'number', 5),
+  ('d1000000-0000-0000-0000-000000000008', 'Number of conversations held during follow-up with warm/hot leads', 'number', 6),
+  ('d1000000-0000-0000-0000-000000000008', 'Total number of warm leads', 'number', 7),
+  ('d1000000-0000-0000-0000-000000000008', 'Total number of hot leads', 'number', 8),
+  ('d1000000-0000-0000-0000-000000000008', 'Number of enrollments closed', 'number', 9),
+  ('d1000000-0000-0000-0000-000000000008', 'Naira revenue generated (new payments)', 'number', 10),
+  ('d1000000-0000-0000-0000-000000000008', 'Naira revenue generated (balance payments)', 'number', 11),
+  ('d1000000-0000-0000-0000-000000000008', 'USD revenue generated (new payments)', 'number', 12),
+  ('d1000000-0000-0000-0000-000000000008', 'USD revenue generated (balance payments)', 'number', 13),
+  ('d1000000-0000-0000-0000-000000000008', 'CAD revenue generated (new payments)', 'number', 14),
+  ('d1000000-0000-0000-0000-000000000008', 'CAD revenue generated (balance payments)', 'number', 15);

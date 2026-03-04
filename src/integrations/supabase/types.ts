@@ -16,22 +16,31 @@ export type Database = {
     Tables: {
       daily_reports: {
         Row: {
+          blockers: string | null
+          completed_tasks: string | null
           created_at: string
           id: string
           report_date: string
           staff_id: string
+          uncompleted_tasks: string | null
         }
         Insert: {
+          blockers?: string | null
+          completed_tasks?: string | null
           created_at?: string
           id?: string
           report_date?: string
           staff_id: string
+          uncompleted_tasks?: string | null
         }
         Update: {
+          blockers?: string | null
+          completed_tasks?: string | null
           created_at?: string
           id?: string
           report_date?: string
           staff_id?: string
+          uncompleted_tasks?: string | null
         }
         Relationships: [
           {
