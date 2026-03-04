@@ -40,6 +40,7 @@ export default function ManageStaff() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editedName, setEditedName] = useState("");
   const [editedEmail, setEditedEmail] = useState("");
+  const [editedDeptIds, setEditedDeptIds] = useState<string[]>([]);
 
   const filteredStaff =
     filterDept === "all"
@@ -104,10 +105,11 @@ export default function ManageStaff() {
     }
   };
 
-  const handleEdit = (id: string, currentName: string, currentEmail: string | null) => {
+  const handleEdit = (id: string, currentName: string, currentEmail: string | null, currentDepts: any[]) => {
     setEditingId(id);
     setEditedName(currentName);
     setEditedEmail(currentEmail || "");
+    setEditedDeptIds(currentDepts.map((d) => d.id) || []);
   };
 
   const handleSave = async (id: string) => {
@@ -115,20 +117,68 @@ export default function ManageStaff() {
       toast.error("Name cannot be empty");
       return;
     }
-    const { error } = await supabase
-      .from("staff_members")
-      .update({ 
-        name: editedName.trim(),
-        email: editedEmail.trim() || null
-      })
-      .eq("id", id);
-    if (error) {
-      toast.error(error.message);
-    } else {
+    if (editedDeptIds.length === 0) {
+      toast.error("Please assign at least one department");
+      return;
+    }
+
+    try {
+      // Update staff member info
+      const { error: updateError } = await supabase
+        .from("staff_members")
+        .update({ 
+          name: editedName.trim(),
+          email: editedEmail.trim() || null
+        })
+        .eq("id", id);
+
+      if (updateError) throw updateError;
+
+      // Get current department assignments
+      const { data: currentAssignments, error: fetchError } = await supabase
+        .from("staff_department_assignments")
+        .select("department_id")
+        .eq("staff_id", id);
+
+      if (fetchError) throw fetchError;
+
+      const currentDeptIds = (currentAssignments || []).map((a: any) => a.department_id);
+      
+      // Find departments to add and remove
+      const deptIdsToAdd = editedDeptIds.filter((id) => !currentDeptIds.includes(id));
+      const deptIdsToRemove = currentDeptIds.filter((id) => !editedDeptIds.includes(id));
+
+      // Remove departments
+      if (deptIdsToRemove.length > 0) {
+        const { error: deleteError } = await supabase
+          .from("staff_department_assignments")
+          .delete()
+          .eq("staff_id", id)
+          .in("department_id", deptIdsToRemove);
+
+        if (deleteError) throw deleteError;
+      }
+
+      // Add departments
+      if (deptIdsToAdd.length > 0) {
+        const { error: insertError } = await supabase
+          .from("staff_department_assignments")
+          .insert(
+            deptIdsToAdd.map((deptId) => ({
+              staff_id: id,
+              department_id: deptId,
+            }))
+          );
+
+        if (insertError) throw insertError;
+      }
+
       toast.success("Staff member updated successfully");
       setEditingId(null);
       queryClient.invalidateQueries({ queryKey: ["all_staff_members"] });
       queryClient.invalidateQueries({ queryKey: ["staff_members"] });
+    } catch (error: any) {
+      toast.error(error.message);
     }
   };
 
@@ -136,6 +186,7 @@ export default function ManageStaff() {
     setEditingId(null);
     setEditedName("");
     setEditedEmail("");
+    setEditedDeptIds([]);
   };
 
   return (
@@ -282,13 +333,41 @@ export default function ManageStaff() {
                       )}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      <div className="flex flex-wrap gap-1">
-                        {staff.assigned_departments?.map((dept) => (
-                          <Badge key={dept.id} variant="outline" className="text-xs">
-                            {dept.name}
-                          </Badge>
-                        ))}
-                      </div>
+                      {editingId === staff.id ? (
+                        <div className="border rounded-md p-2 space-y-2 bg-background max-h-40 overflow-y-auto">
+                          {departments?.map((d) => (
+                            <div key={d.id} className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                id={`edit-dept-${d.id}`}
+                                checked={editedDeptIds.includes(d.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setEditedDeptIds([...editedDeptIds, d.id]);
+                                  } else {
+                                    setEditedDeptIds(editedDeptIds.filter((id) => id !== d.id));
+                                  }
+                                }}
+                                className="h-4 w-4 rounded border-gray-300"
+                              />
+                              <Label
+                                htmlFor={`edit-dept-${d.id}`}
+                                className="text-sm font-normal cursor-pointer"
+                              >
+                                {d.name}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          {staff.assigned_departments?.map((dept) => (
+                            <Badge key={dept.id} variant="outline" className="text-xs">
+                              {dept.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Badge variant={staff.is_active ? "default" : "secondary"}>
@@ -318,7 +397,7 @@ export default function ManageStaff() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleEdit(staff.id, staff.name, staff.email)}
+                            onClick={() => handleEdit(staff.id, staff.name, staff.email, staff.assigned_departments || [])}
                           >
                             <Edit2 className="mr-1 h-4 w-4" />
                             Edit
