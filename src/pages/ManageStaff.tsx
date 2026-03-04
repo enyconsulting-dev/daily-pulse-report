@@ -140,7 +140,7 @@ export default function ManageStaff() {
 
   return (
     <AppLayout>
-      <div className="mx-auto max-w-3xl animate-fade-in">
+      <div className="mx-auto max-w-7xl animate-fade-in">
         <div className="mb-8">
           <h1 className="font-display text-3xl font-bold tracking-tight text-foreground">
             Manage Staff
