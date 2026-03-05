@@ -527,11 +527,12 @@ export default function Dashboard() {
                   <CardTitle className="text-lg">Top 10 Metrics Overall</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={400}>
+                  <ResponsiveContainer width="100%" height={400} className="">
                     <BarChart
                       data={chartData.metricsData}
                       layout="vertical"
                       margin={{ top: 5, right: 30, left: 250, bottom: 5 }}
+                      className=""
                     >
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis type="number" />

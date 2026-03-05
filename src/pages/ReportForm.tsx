@@ -152,6 +152,80 @@ export default function ReportForm() {
 
       if (entriesError) throw entriesError;
 
+      // Send data to Google Chat webhook
+      const metricsText = metrics
+        .map((m) => `${m.metric_name}: ${metricValues[m.id] || "0"}${m.metric_type === "percentage" ? "%" : ""}`)
+        .join("\n");
+
+      const webhookMessage = {
+        text: `Daily Report Submission`,
+        cards: [
+          {
+            header: {
+              title: "📊 Daily Report Submitted",
+              subtitle: `${new Date().toLocaleDateString()}`,
+            },
+            sections: [
+              {
+                widgets: [
+                  {
+                    textParagraph: {
+                      text: `<b>Staff:</b> ${selectedStaff?.name}\n<b>Department:</b> ${selectedDept?.name}`,
+                    },
+                  },
+                  {
+                    textParagraph: {
+                      text: `<b>Key Metrics:</b>\n${metricsText}`,
+                    },
+                  },
+                  ...(completedNotes
+                    ? [
+                        {
+                          textParagraph: {
+                            text: `<b>✓ Completed:</b>\n${completedNotes}`,
+                          },
+                        },
+                      ]
+                    : []),
+                  ...(blockerNotes
+                    ? [
+                        {
+                          textParagraph: {
+                            text: `<b>⚠️ Blockers:</b>\n${blockerNotes}`,
+                          },
+                        },
+                      ]
+                    : []),
+                  ...(uncompletedNotes
+                    ? [
+                        {
+                          textParagraph: {
+                            text: `<b>→ Next Priorities:</b>\n${uncompletedNotes}`,
+                          },
+                        },
+                      ]
+                    : []),
+                ],
+              },
+            ],
+          },
+        ],
+      };
+
+      await fetch(
+        "https://chat.googleapis.com/v1/spaces/AAQAvJmVRG8/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=MuMyJFHu0KonPMNyB-qk3qbYka8MMR52yITuoaQUA_I",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(webhookMessage),
+        }
+      ).catch((err) => {
+        console.error("Error sending to Google Chat:", err);
+        // Don't fail the report submission if webhook fails
+      });
+
       toast.success("Report submitted successfully!");
       setMetricValues({});
       setCompletedNotes("");
