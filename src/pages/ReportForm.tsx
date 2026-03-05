@@ -378,11 +378,11 @@ export default function ReportForm() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="completed-notes" className="text-sm font-medium">
-                  ✓ Completed Tasks for Today
+                  ✓ Key tasks completed
                 </Label>
                 <Textarea
                   id="completed-notes"
-                  placeholder="What did you accomplish today? List your completed tasks..."
+                  placeholder="What did you accomplish today? List your Key tasks completed..."
                   value={completedNotes}
                   onChange={(e) => setCompletedNotes(e.target.value)}
                   className="min-h-24 resize-none"
@@ -391,7 +391,7 @@ export default function ReportForm() {
 
               <div className="space-y-2">
                 <Label htmlFor="blocker-notes" className="text-sm font-medium">
-                  ⚠️ Blockers for Today
+                  ⚠️ Blockers
                 </Label>
                 <Textarea
                   id="blocker-notes"
@@ -404,7 +404,7 @@ export default function ReportForm() {
 
               <div className="space-y-2">
                 <Label htmlFor="uncompleted-notes" className="text-sm font-medium">
-                  → Uncompleted Tasks (Carry Over)
+                  → Priorities for the next day
                 </Label>
                 <Textarea
                   id="uncompleted-notes"

@@ -603,40 +603,124 @@ export default function Dashboard() {
                       </Card>
                     )}
 
-                    {/* Revenue Chart for Sales Team */}
+                    {/* Revenue Charts for Sales Team - Separated by Currency */}
                     {isScheduleTeam && revenueMetrics.length > 0 && (
-                      <Card className="overflow-hidden mt-6">
-                        <CardHeader>
-                          <CardTitle className="text-base">{deptName} - Revenue Breakdown</CardTitle>
-                          <p className="text-xs text-muted-foreground mt-1">Revenue metrics in different currencies</p>
-                        </CardHeader>
-                        <CardContent>
-                          <ResponsiveContainer width="100%" height={350}>
-                            <BarChart
-                              data={revenueMetrics}
-                              layout="vertical"
-                              margin={{ top: 5, right: 30, left: 200, bottom: 5 }}
-                            >
-                              <CartesianGrid strokeDasharray="3 3" />
-                              <XAxis type="number" />
-                              <YAxis dataKey="name" type="category" width={190} style={{ fontSize: "11px" }} />
-                              <Tooltip 
-                                formatter={(value) => {
-                                  if (typeof value === 'number') {
-                                    return value.toLocaleString('en-US', { maximumFractionDigits: 0 });
-                                  }
-                                  return value;
-                                }}
-                              />
-                              <Bar 
-                                dataKey="value" 
-                                fill="#10b981" 
-                                radius={[0, 8, 8, 0]} 
-                              />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </CardContent>
-                      </Card>
+                      <div className="space-y-6 mt-6">
+                        {(() => {
+                          const usdMetrics = revenueMetrics.filter(m => m.name.toLowerCase().includes('usd'));
+                          const cadMetrics = revenueMetrics.filter(m => m.name.toLowerCase().includes('cad'));
+                          const ngnMetrics = revenueMetrics.filter(m => m.name.toLowerCase().includes('naira') || m.name.toLowerCase().includes('ngn'));
+                          
+                          return (
+                            <>
+                              {usdMetrics.length > 0 && (
+                                <Card className="overflow-hidden">
+                                  <CardHeader>
+                                    <CardTitle className="text-base">{deptName} - USD Revenue</CardTitle>
+                                    <p className="text-xs text-muted-foreground mt-1">United States Dollars</p>
+                                  </CardHeader>
+                                  <CardContent>
+                                    <ResponsiveContainer width="100%" height={400}>
+                                      <BarChart
+                                        data={usdMetrics}
+                                        layout="vertical"
+                                        margin={{ top: 5, right: 30, left: 140, bottom: 5 }}
+                                      >
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis type="number" />
+                                        <YAxis dataKey="name" type="category" width={130} style={{ fontSize: "11px" }} />
+                                        <Tooltip 
+                                          formatter={(value) => {
+                                            if (typeof value === 'number') {
+                                              return '$' + value.toLocaleString('en-US', { maximumFractionDigits: 0 });
+                                            }
+                                            return value;
+                                          }}
+                                        />
+                                        <Bar 
+                                          dataKey="value" 
+                                          fill="#3b82f6" 
+                                          radius={[0, 8, 8, 0]} 
+                                        />
+                                      </BarChart>
+                                    </ResponsiveContainer>
+                                  </CardContent>
+                                </Card>
+                              )}
+                              
+                              {cadMetrics.length > 0 && (
+                                <Card className="overflow-hidden">
+                                  <CardHeader>
+                                    <CardTitle className="text-base">{deptName} - CAD Revenue</CardTitle>
+                                    <p className="text-xs text-muted-foreground mt-1">Canadian Dollars</p>
+                                  </CardHeader>
+                                  <CardContent>
+                                    <ResponsiveContainer width="100%" height={400}>
+                                      <BarChart
+                                        data={cadMetrics}
+                                        layout="vertical"
+                                        margin={{ top: 5, right: 30, left: 140, bottom: 5 }}
+                                      >
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis type="number" />
+                                        <YAxis dataKey="name" type="category" width={130} style={{ fontSize: "11px" }} />
+                                        <Tooltip 
+                                          formatter={(value) => {
+                                            if (typeof value === 'number') {
+                                              return 'CAD ' + value.toLocaleString('en-US', { maximumFractionDigits: 0 });
+                                            }
+                                            return value;
+                                          }}
+                                        />
+                                        <Bar 
+                                          dataKey="value" 
+                                          fill="#f59e0b" 
+                                          radius={[0, 8, 8, 0]} 
+                                        />
+                                      </BarChart>
+                                    </ResponsiveContainer>
+                                  </CardContent>
+                                </Card>
+                              )}
+                              
+                              {ngnMetrics.length > 0 && (
+                                <Card className="overflow-hidden">
+                                  <CardHeader>
+                                    <CardTitle className="text-base">{deptName} - NGN Revenue</CardTitle>
+                                    <p className="text-xs text-muted-foreground mt-1">Nigerian Naira</p>
+                                  </CardHeader>
+                                  <CardContent>
+                                    <ResponsiveContainer width="100%" height={400}>
+                                      <BarChart
+                                        data={ngnMetrics}
+                                        layout="vertical"
+                                        margin={{ top: 5, right: 30, left: 140, bottom: 5 }}
+                                      >
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis type="number" />
+                                        <YAxis dataKey="name" type="category" width={130} style={{ fontSize: "11px" }} />
+                                        <Tooltip 
+                                          formatter={(value) => {
+                                            if (typeof value === 'number') {
+                                              return '₦' + value.toLocaleString('en-US', { maximumFractionDigits: 0 });
+                                            }
+                                            return value;
+                                          }}
+                                        />
+                                        <Bar 
+                                          dataKey="value" 
+                                          fill="#10b981" 
+                                          radius={[0, 8, 8, 0]} 
+                                        />
+                                      </BarChart>
+                                    </ResponsiveContainer>
+                                  </CardContent>
+                                </Card>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
                     )}
                   </div>
                 );
@@ -718,7 +802,7 @@ export default function Dashboard() {
                         {report.completed_tasks && (
                           <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 p-3">
                             <p className="text-xs font-medium text-emerald-900 dark:text-emerald-300 mb-1">
-                              ✓ Completed Tasks
+                              ✓ Key tasks completed
                             </p>
                             <p className="text-sm text-emerald-800 dark:text-emerald-200 whitespace-pre-wrap">
                               {report.completed_tasks}
@@ -740,7 +824,7 @@ export default function Dashboard() {
                         {report.uncompleted_tasks && (
                           <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 p-3">
                             <p className="text-xs font-medium text-blue-900 dark:text-blue-300 mb-1">
-                              → Uncompleted Tasks (Carry Over)
+                              → Priorities for the next day
                             </p>
                             <p className="text-sm text-blue-800 dark:text-blue-200 whitespace-pre-wrap">
                               {report.uncompleted_tasks}
