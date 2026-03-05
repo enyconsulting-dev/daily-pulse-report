@@ -273,7 +273,7 @@ export default function ManageStaff() {
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label>Departments (select one or more)</Label>
+                <Label>Job Roles</Label>
                 <div className="border rounded-md p-3 space-y-2 bg-background">
                   {departments?.map((d) => (
                     <div key={d.id} className="flex items-center gap-2">
