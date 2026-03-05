@@ -85,15 +85,17 @@ export default function ReportForm() {
   const handleSubmit = async () => {
     if (!selectedStaffId || !selectedDepartmentId || !metrics) return;
 
-    // Validate all fields are filled with valid numbers
-    const emptyFields = metrics.filter((m) => !metricValues[m.id]?.trim());
-    if (emptyFields.length > 0) {
-      toast.error("Please fill in all metric fields");
+    // Get metrics that have values entered
+    const filledMetrics = metrics.filter((m) => metricValues[m.id]?.trim());
+
+    // Check if at least one metric is filled
+    if (filledMetrics.length === 0) {
+      toast.error("Please fill in at least one metric");
       return;
     }
 
-    // Validate all values are valid numbers
-    const invalidFields = metrics.filter((m) => {
+    // Validate only the filled metrics have valid values
+    const invalidFields = filledMetrics.filter((m) => {
       const value = metricValues[m.id];
       const numValue = parseFloat(value);
       
@@ -140,10 +142,10 @@ export default function ReportForm() {
         throw reportError;
       }
 
-      const entries = metrics.map((m) => ({
+      const entries = filledMetrics.map((m) => ({
         report_id: report.id,
         metric_id: m.id,
-        value: parseFloat(metricValues[m.id] || "0"),
+        value: parseFloat(metricValues[m.id]),
       }));
 
       const { error: entriesError } = await supabase
@@ -153,8 +155,8 @@ export default function ReportForm() {
       if (entriesError) throw entriesError;
 
       // Send data to Google Chat webhook
-      const metricsText = metrics
-        .map((m) => `${m.metric_name}: ${metricValues[m.id] || "0"}${m.metric_type === "percentage" ? "%" : ""}`)
+      const metricsText = filledMetrics
+        .map((m) => `${m.metric_name}: ${metricValues[m.id]}${m.metric_type === "percentage" ? "%" : ""}`)
         .join("\n");
 
       const webhookMessage = {
