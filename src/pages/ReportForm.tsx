@@ -319,7 +319,7 @@ export default function ReportForm() {
             {selectedStaff && assignedDepartments && assignedDepartments.length > 0 && (passwordVerified || !selectedStaff.password_hash) && (
               <>
                 <div className="space-y-2">
-                  <Label>Select Department</Label>
+                  <Label>Job Roles</Label>
                   <Select
                     value={selectedDepartmentId}
                     onValueChange={(v) => {
