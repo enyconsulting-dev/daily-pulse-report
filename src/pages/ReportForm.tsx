@@ -8,6 +8,7 @@ import {
   useCheckTodayReport,
   useStaffAssignedDepartments,
 } from "@/hooks/useStaffAndMetrics";
+import { verifyPassword } from "@/lib/passwordUtils";
 import {
   Select,
   SelectContent,
@@ -28,6 +29,9 @@ export default function ReportForm() {
   const queryClient = useQueryClient();
   const [selectedStaffId, setSelectedStaffId] = useState<string>();
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>();
+  const [enteredPassword, setEnteredPassword] = useState<string>("");
+  const [passwordVerified, setPasswordVerified] = useState<boolean>(false);
+  const [verifyingPassword, setVerifyingPassword] = useState(false);
   const [metricValues, setMetricValues] = useState<Record<string, string>>({});
   const [completedNotes, setCompletedNotes] = useState<string>("");
   const [blockerNotes, setBlockerNotes] = useState<string>("");
@@ -40,7 +44,7 @@ export default function ReportForm() {
   const { data: todayReports, isLoading: checkingReport } =
     useCheckTodayReport(selectedStaffId);
 
-  const selectedStaff = allStaff?.find((s) => s.id === selectedStaffId);
+  const selectedStaff = allStaff?.find((s) => s.id === selectedStaffId) as any;
   const selectedDept = assignedDepartments?.find((d) => d.id === selectedDepartmentId);
   
   // Check if already submitted for this specific department
@@ -52,6 +56,31 @@ export default function ReportForm() {
   const departmentsNeedingReports = assignedDepartments?.filter(
     (d) => !todayReports?.some((r: any) => r.department_id === d.id)
   ) || [];
+
+  // Check if password verification is needed
+  const needsPasswordVerification = selectedStaff?.password_hash && !passwordVerified;
+
+  const handlePasswordVerify = async () => {
+    if (!selectedStaff?.password_hash) {
+      setPasswordVerified(true);
+      return;
+    }
+
+    setVerifyingPassword(true);
+    try {
+      const isValid = await verifyPassword(enteredPassword, selectedStaff.password_hash);
+      if (isValid) {
+        setPasswordVerified(true);
+        toast.success("Password verified!");
+      } else {
+        toast.error("Incorrect password");
+        setEnteredPassword("");
+      }
+    } catch (error: any) {
+      toast.error("Error verifying password");
+    }
+    setVerifyingPassword(false);
+  };
 
   const handleSubmit = async () => {
     if (!selectedStaffId || !selectedDepartmentId || !metrics) return;
@@ -162,6 +191,8 @@ export default function ReportForm() {
                   setSelectedStaffId(v);
                   setSelectedDepartmentId(undefined);
                   setMetricValues({});
+                  setPasswordVerified(false);
+                  setEnteredPassword("");
                 }}
               >
                 <SelectTrigger>
@@ -177,7 +208,39 @@ export default function ReportForm() {
               </Select>
             </div>
 
-            {selectedStaff && assignedDepartments && assignedDepartments.length > 0 && (
+            {selectedStaff && selectedStaff.password_hash && !passwordVerified && (
+              <Card className="border-orange-200 bg-orange-50">
+                <CardContent className="pt-6">
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="password" className="text-sm">
+                        Password Required
+                      </Label>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        Please enter your password to access the reporting form
+                      </p>
+                      <Input
+                        id="password"
+                        type="password"
+                        placeholder="Enter your password"
+                        value={enteredPassword}
+                        onChange={(e) => setEnteredPassword(e.target.value)}
+                        onKeyPress={(e) => e.key === "Enter" && handlePasswordVerify()}
+                      />
+                    </div>
+                    <Button
+                      onClick={handlePasswordVerify}
+                      disabled={!enteredPassword.trim() || verifyingPassword}
+                      className="w-full"
+                    >
+                      {verifyingPassword ? "Verifying..." : "Verify Password"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {selectedStaff && assignedDepartments && assignedDepartments.length > 0 && (passwordVerified || !selectedStaff.password_hash) && (
               <>
                 <div className="space-y-2">
                   <Label>Select Department</Label>

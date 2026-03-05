@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useDepartments, useAllStaffMembers } from "@/hooks/useStaffAndMetrics";
+import { hashPassword } from "@/lib/passwordUtils";
 import {
   Select,
   SelectContent,
@@ -33,6 +34,7 @@ export default function ManageStaff() {
 
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [newDeptIds, setNewDeptIds] = useState<string[]>([]);
   const [filterDept, setFilterDept] = useState<string>("all");
   const [adding, setAdding] = useState(false);
@@ -40,6 +42,7 @@ export default function ManageStaff() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editedName, setEditedName] = useState("");
   const [editedEmail, setEditedEmail] = useState("");
+  const [editedPassword, setEditedPassword] = useState("");
   const [editedDeptIds, setEditedDeptIds] = useState<string[]>([]);
 
   const filteredStaff =
@@ -56,12 +59,19 @@ export default function ManageStaff() {
     }
     setAdding(true);
     try {
+      // Hash password if provided
+      let passwordHash = null;
+      if (newPassword.trim()) {
+        passwordHash = await hashPassword(newPassword.trim());
+      }
+
       // Create staff member
       const { data: staffData, error: staffError } = await supabase
         .from("staff_members")
         .insert({ 
           name: newName.trim(), 
           email: newEmail.trim() || null,
+          password_hash: passwordHash,
         })
         .select()
         .single();
@@ -83,6 +93,7 @@ export default function ManageStaff() {
       toast.success(`${newName.trim()} added successfully`);
       setNewName("");
       setNewEmail("");
+      setNewPassword("");
       setNewDeptIds([]);
       queryClient.invalidateQueries({ queryKey: ["all_staff_members"] });
       queryClient.invalidateQueries({ queryKey: ["staff_members"] });
@@ -105,10 +116,11 @@ export default function ManageStaff() {
     }
   };
 
-  const handleEdit = (id: string, currentName: string, currentEmail: string | null, currentDepts: any[]) => {
+  const handleEdit = (id: string, currentName: string, currentEmail: string | null, currentDepts: any[], currentPasswordHash: string | null = null) => {
     setEditingId(id);
     setEditedName(currentName);
     setEditedEmail(currentEmail || "");
+    setEditedPassword(currentPasswordHash ? "***" : ""); // Show *** if password exists
     setEditedDeptIds(currentDepts.map((d) => d.id) || []);
   };
 
@@ -123,13 +135,30 @@ export default function ManageStaff() {
     }
 
     try {
+      // Hash password if user entered a new one (not ***)
+      let passwordHash: string | null = null;
+      if (editedPassword.trim() && editedPassword !== "***") {
+        passwordHash = await hashPassword(editedPassword.trim());
+      }
+
       // Update staff member info
+      const updateData: any = {
+        name: editedName.trim(),
+        email: editedEmail.trim() || null
+      };
+      
+      // Only update password if a new one was provided
+      if (editedPassword.trim() && editedPassword !== "***") {
+        updateData.password_hash = passwordHash;
+      } else if (editedPassword === "") {
+        // Clear password if user explicitly cleared it
+        updateData.password_hash = null;
+      }
+      // If password is "***", don't update password field (keep existing)
+
       const { error: updateError } = await supabase
         .from("staff_members")
-        .update({ 
-          name: editedName.trim(),
-          email: editedEmail.trim() || null
-        })
+        .update(updateData)
         .eq("id", id);
 
       if (updateError) throw updateError;
@@ -186,6 +215,7 @@ export default function ManageStaff() {
     setEditingId(null);
     setEditedName("");
     setEditedEmail("");
+    setEditedPassword("");
     setEditedDeptIds([]);
   };
 
@@ -225,6 +255,20 @@ export default function ManageStaff() {
                     value={newEmail}
                     onChange={(e) => setNewEmail(e.target.value)}
                   />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label>Password (optional)</Label>
+                  <Input
+                    type="password"
+                    placeholder="Leave blank if no password needed"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    If set, staff must enter this password to submit reports
+                  </p>
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -300,13 +344,14 @@ export default function ManageStaff() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
+                  <TableHead>Password</TableHead>
                   <TableHead>Department</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredStaff?.map((staff) => (
+                {filteredStaff?.map((staff: any) => (
                   <TableRow key={staff.id}>
                     <TableCell className="font-medium">
                       {editingId === staff.id ? (
@@ -330,6 +375,19 @@ export default function ManageStaff() {
                         />
                       ) : (
                         staff.email || "—"
+                      )}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {editingId === staff.id ? (
+                        <Input
+                          type="password"
+                          value={editedPassword}
+                          onChange={(e) => setEditedPassword(e.target.value)}
+                          placeholder={staff.password_hash ? "Leave blank to keep current" : "Set password"}
+                          className="h-8 text-xs"
+                        />
+                      ) : (
+                        staff.password_hash ? "✓ Set" : "—"
                       )}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
@@ -397,7 +455,7 @@ export default function ManageStaff() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleEdit(staff.id, staff.name, staff.email, staff.assigned_departments || [])}
+                            onClick={() => handleEdit(staff.id, staff.name, staff.email, staff.assigned_departments || [], staff.password_hash)}
                           >
                             <Edit2 className="mr-1 h-4 w-4" />
                             Edit

@@ -44,7 +44,7 @@ export function useAllStaffMembers() {
     queryFn: async () => {
       const { data: staffData, error: staffError } = await supabase
         .from("staff_members")
-        .select("id, name, email, is_active")
+        .select("id, name, email, is_active, password_hash")
         .order("name");
       if (staffError) throw staffError;
 
