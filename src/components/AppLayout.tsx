@@ -1,7 +1,8 @@
-import { Link, useLocation } from "react-router-dom";
-import { ClipboardList, BarChart3, Users, Menu, X } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { ClipboardList, BarChart3, Users, Menu, X, LogOut } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { useAdminAuth } from "@/contexts/AdminAuthContext";
 
 const navItems = [
   { to: "/", label: "Submit Report", icon: ClipboardList },
@@ -11,7 +12,14 @@ const navItems = [
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { isAuthenticated, logout } = useAdminAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -46,13 +54,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             ))}
           </nav>
 
-          {/* Mobile toggle */}
-          <button
-            className="rounded-lg p-2 text-muted-foreground hover:bg-secondary md:hidden"
-            onClick={() => setMobileOpen(!mobileOpen)}
-          >
-            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
+          <div className="flex items-center gap-2">
+            {isAuthenticated && (
+              <button
+                onClick={handleLogout}
+                className="hidden items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground md:flex"
+              >
+                <LogOut className="h-4 w-4" />
+                Logout
+              </button>
+            )}
+            {/* Mobile toggle */}
+            <button
+              className="rounded-lg p-2 text-muted-foreground hover:bg-secondary md:hidden"
+              onClick={() => setMobileOpen(!mobileOpen)}
+            >
+              {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+          </div>
         </div>
 
         {/* Mobile nav */}
@@ -74,6 +93,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 {item.label}
               </Link>
             ))}
+            {isAuthenticated && (
+              <button
+                onClick={() => { setMobileOpen(false); handleLogout(); }}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary"
+              >
+                <LogOut className="h-4 w-4" />
+                Logout
+              </button>
+            )}
           </nav>
         )}
       </header>
