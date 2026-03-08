@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useDepartments, useAllStaffMembers } from "@/hooks/useStaffAndMetrics";
-import { format, subDays, subMonths, subYears, startOfWeek, startOfMonth } from "date-fns";
+import { format, subDays, subMonths, subYears, startOfWeek, endOfWeek, startOfMonth } from "date-fns";
 import {
   Select,
   SelectContent,
@@ -45,7 +45,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-type DatePreset = "today" | "week" | "month" | "2months" | "year" | "custom";
+type DatePreset = "today" | "week" | "lastweek" | "month" | "2months" | "year" | "custom";
 
 const COLORS = [
   "#3b82f6", // blue
@@ -68,7 +68,11 @@ function getDateRange(preset: DatePreset, customFrom: Date, customTo: Date) {
     case "today":
       return { from: today, to: today };
     case "week":
-      return { from: startOfWeek(today, { weekStartsOn: 1 }), to: today };
+      return { from: startOfWeek(today, { weekStartsOn: 0 }), to: endOfWeek(today, { weekStartsOn: 0 }) };
+    case "lastweek": {
+      const lastWeekDay = subDays(startOfWeek(today, { weekStartsOn: 0 }), 1);
+      return { from: startOfWeek(lastWeekDay, { weekStartsOn: 0 }), to: endOfWeek(lastWeekDay, { weekStartsOn: 0 }) };
+    }
     case "month":
       return { from: startOfMonth(today), to: today };
     case "2months":
@@ -177,8 +181,9 @@ export default function Dashboard() {
                            name.toLowerCase().includes("naira") ||
                            name.toLowerCase().includes("usd") ||
                            name.toLowerCase().includes("cad");
+          const isOrganicImpressions = name.toLowerCase().includes("organic impressions");
           
-          if (!isRevenue) {
+          if (!isRevenue && !isOrganicImpressions) {
             metricsMap[name] = (metricsMap[name] || 0) + parseFloat(entry.value || "0");
             
             const existing = metricsByDept[deptName].find(m => m.name === name);
@@ -295,6 +300,7 @@ export default function Dashboard() {
   const presetLabel: Record<DatePreset, string> = {
     today: "Today",
     week: "This Week",
+    lastweek: "Last Week",
     month: "This Month",
     "2months": "Last 2 Months",
     year: "Last Year",
@@ -551,7 +557,7 @@ export default function Dashboard() {
         {reports && reports.length > 0 && Object.keys(chartData.departmentMetrics).length > 0 && (
           <div className="mb-8">
             <h2 className="mb-6 text-2xl font-bold text-foreground">Department Performance Metrics</h2>
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div className="">
               {Object.entries(chartData.departmentMetrics).map(([deptName, metrics]) => {
                 // Split revenue and non-revenue metrics for Sales team
                 const isScheduleTeam = deptName.includes("Sales");
@@ -572,7 +578,7 @@ export default function Dashboard() {
                 const colorIndex = Object.keys(chartData.departmentMetrics).indexOf(deptName);
 
                 return (
-                  <div key={deptName}>
+                  <div key={deptName} className="mb-10">
                     {/* Main Metrics Chart */}
                     {displayMetrics.length > 0 && (
                       <Card className="overflow-hidden">
