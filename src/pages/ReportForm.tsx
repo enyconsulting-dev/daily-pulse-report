@@ -293,6 +293,9 @@ export default function ReportForm() {
                         setMetricValues({});
                       }
                     }}
+                    disabled={(date) => date > new Date()}
+                    fromMonth={new Date()}
+                    toDate={new Date()}
                     initialFocus
                   />
                 </PopoverContent>
