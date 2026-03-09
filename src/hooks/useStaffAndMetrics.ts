@@ -83,17 +83,17 @@ export function useDepartmentMetrics(departmentId?: string) {
   });
 }
 
-export function useCheckTodayReport(staffId?: string) {
+export function useCheckTodayReport(staffId?: string, reportDate?: string) {
   return useQuery({
-    queryKey: ["today_report", staffId],
+    queryKey: ["today_report", staffId, reportDate],
     enabled: !!staffId,
     queryFn: async () => {
-      const today = new Date().toISOString().split("T")[0];
+      const date = reportDate || new Date().toISOString().split("T")[0];
       const { data, error } = await supabase
         .from("daily_reports")
         .select("id, department_id")
         .eq("staff_id", staffId!)
-        .eq("report_date", today);
+        .eq("report_date", date);
       if (error) throw error;
       return data;
     },

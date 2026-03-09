@@ -21,8 +21,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
-import { CheckCircle2, Send } from "lucide-react";
+import { CheckCircle2, Send, CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import AppLayout from "@/components/AppLayout";
 
 export default function ReportForm() {
@@ -37,12 +41,15 @@ export default function ReportForm() {
   const [blockerNotes, setBlockerNotes] = useState<string>("");
   const [uncompletedNotes, setUncompletedNotes] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
+  const [reportDate, setReportDate] = useState<Date>(new Date());
+
+  const reportDateStr = format(reportDate, "yyyy-MM-dd");
 
   const { data: allStaff } = useAllStaffMembers();
   const { data: assignedDepartments } = useStaffAssignedDepartments(selectedStaffId);
   const { data: metrics } = useDepartmentMetrics(selectedDepartmentId);
   const { data: todayReports, isLoading: checkingReport } =
-    useCheckTodayReport(selectedStaffId);
+    useCheckTodayReport(selectedStaffId, reportDateStr);
 
   const selectedStaff = allStaff?.find((s) => s.id === selectedStaffId) as any;
   const selectedDept = assignedDepartments?.find((d) => d.id === selectedDepartmentId);
@@ -124,9 +131,10 @@ export default function ReportForm() {
     try {
       const { data: report, error: reportError } = await supabase
         .from("daily_reports")
-        .insert({ 
+        .insert({
           staff_id: selectedStaffId,
           department_id: selectedDepartmentId,
+          report_date: reportDateStr,
           completed_tasks: completedNotes,
           blockers: blockerNotes,
           uncompleted_tasks: uncompletedNotes,
@@ -165,7 +173,7 @@ export default function ReportForm() {
           {
             header: {
               title: "📊 Daily Report Submitted",
-              subtitle: `${new Date().toLocaleDateString()}`,
+              subtitle: `${format(reportDate, "PPP")}`,
             },
             sections: [
               {
@@ -259,6 +267,38 @@ export default function ReportForm() {
             <CardTitle className="text-lg">Staff Information</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Report Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !reportDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {reportDate ? format(reportDate, "PPP") : "Pick a date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={reportDate}
+                    onSelect={(date) => {
+                      if (date) {
+                        setReportDate(date);
+                        setSelectedDepartmentId(undefined);
+                        setMetricValues({});
+                      }
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
             <div className="space-y-2">
               <Label>Select your name</Label>
               <Select
@@ -393,7 +433,7 @@ export default function ReportForm() {
                   Report already submitted
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  You've already submitted your report for {selectedDept?.name} today.
+                  You've already submitted your report for {selectedDept?.name} on {format(reportDate, "PPP")}.
                   {departmentsNeedingReports.length > 0 && (
                     <> Consider submitting for other departments: {departmentsNeedingReports
                       .map((d) => d.name)
@@ -409,7 +449,7 @@ export default function ReportForm() {
           <Card className="mt-6 animate-fade-in">
             <CardHeader>
               <CardTitle className="text-lg">
-                Today's Metrics — {selectedDept?.name}
+                Metrics for {format(reportDate, "PPP")} — {selectedDept?.name}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
