@@ -222,19 +222,19 @@ export default function ReportForm() {
         ],
       };
 
-      // await fetch(
-      //   "https://chat.googleapis.com/v1/spaces/AAQAvJmVRG8/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=MuMyJFHu0KonPMNyB-qk3qbYka8MMR52yITuoaQUA_I",
-      //   {
-      //     method: "POST",
-      //     headers: {
-      //       "Content-Type": "application/json",
-      //     },
-      //     body: JSON.stringify(webhookMessage),
-      //   }
-      // ).catch((err) => {
-      //   console.error("Error sending to Google Chat:", err);
-      //   // Don't fail the report submission if webhook fails
-      // });
+      await fetch(
+        "https://chat.googleapis.com/v1/spaces/AAQAvJmVRG8/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=MuMyJFHu0KonPMNyB-qk3qbYka8MMR52yITuoaQUA_I",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(webhookMessage),
+        }
+      ).catch((err) => {
+        console.error("Error sending to Google Chat:", err);
+        // Don't fail the report submission if webhook fails
+      });
 
       toast.success("Report submitted successfully!");
       setMetricValues({});
