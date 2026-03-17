@@ -3,7 +3,7 @@ import { ClipboardList, BarChart3, Users, Menu, X, LogOut } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
-
+import { ModeToggle } from "./ThemeToggle";
 const navItems = [
   { to: "/", label: "Submit Report", icon: ClipboardList },
   { to: "/dashboard", label: "Dashboard", icon: BarChart3 },
@@ -27,12 +27,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-50 border-b bg-card/80 backdrop-blur-md">
         <div className="container flex h-16 items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-              <ClipboardList className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <span className="font-display text-lg font-bold tracking-tight text-foreground">
-              Daily Reports
-            </span>
+            <img 
+              src="/enyconsulting.png" 
+              alt="Eny Consulting Logo" 
+              className="h-9 w-auto object-contain"
+            />
           </Link>
 
           {/* Desktop nav */}
@@ -55,6 +54,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="flex items-center gap-2">
+            <ModeToggle />
             {isAuthenticated && (
               <button
                 onClick={handleLogout}
