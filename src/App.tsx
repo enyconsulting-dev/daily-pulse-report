@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AdminAuthProvider } from "@/contexts/AdminAuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import ReportForm from "./pages/ReportForm";
 import Dashboard from "./pages/Dashboard";
 import ManageStaff from "./pages/ManageStaff";
@@ -15,6 +16,7 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
+    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
     <TooltipProvider>
       <Toaster />
       <Sonner />
@@ -44,6 +46,7 @@ const App = () => (
         </AdminAuthProvider>
       </BrowserRouter>
     </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 
