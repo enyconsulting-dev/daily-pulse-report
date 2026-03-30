@@ -194,6 +194,7 @@ export type Database = {
         Row: {
           created_at: string
           email: string | null
+          employee_code: string | null
           id: string
           is_active: boolean
           name: string
@@ -202,6 +203,7 @@ export type Database = {
         Insert: {
           created_at?: string
           email?: string | null
+          employee_code?: string | null
           id?: string
           is_active?: boolean
           name: string
@@ -210,12 +212,51 @@ export type Database = {
         Update: {
           created_at?: string
           email?: string | null
+          employee_code?: string | null
           id?: string
           is_active?: boolean
           name?: string
           password_hash?: string | null
         }
         Relationships: []
+      }
+      timesheets: {
+        Row: {
+          id: string
+          staff_id: string
+          timesheet_date: string
+          start_time: string
+          end_time: string
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          staff_id: string
+          timesheet_date?: string
+          start_time: string
+          end_time: string
+          notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          staff_id?: string
+          timesheet_date?: string
+          start_time?: string
+          end_time?: string
+          notes?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timesheets_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

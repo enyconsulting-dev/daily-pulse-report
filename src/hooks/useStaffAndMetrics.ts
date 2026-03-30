@@ -44,7 +44,7 @@ export function useAllStaffMembers() {
     queryFn: async () => {
       const { data: staffData, error: staffError } = await supabase
         .from("staff_members")
-        .select("id, name, email, is_active, password_hash")
+        .select("id, name, email, is_active, password_hash, employee_code")
         .order("name");
       if (staffError) throw staffError;
 
@@ -111,6 +111,23 @@ export function useStaffAssignedDepartments(staffId?: string) {
         .eq("staff_id", staffId!);
       if (error) throw error;
       return data?.map((row: any) => row.departments) || [];
+    },
+  });
+}
+
+export function useCheckTodayTimesheet(staffId?: string, reportDate?: string) {
+  return useQuery({
+    queryKey: ["today_timesheet", staffId, reportDate],
+    enabled: !!staffId,
+    queryFn: async () => {
+      const date = reportDate || new Date().toISOString().split("T")[0];
+      const { data, error } = await supabase
+        .from("timesheets")
+        .select("id, start_time, end_time, notes")
+        .eq("staff_id", staffId!)
+        .eq("timesheet_date", date);
+      if (error) throw error;
+      return data;
     },
   });
 }
