@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useDepartments, useAllStaffMembers } from "@/hooks/useStaffAndMetrics";
+import { useHREmployees, HREmployee } from "@/hooks/useHRPartner";
 import { hashPassword } from "@/lib/passwordUtils";
 import {
   Select,
@@ -24,16 +25,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, UserX, UserCheck, Edit2, Save, X } from "lucide-react";
+import { Plus, UserX, UserCheck, Edit2, Save, X, Loader2 } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 
 export default function ManageStaff() {
   const queryClient = useQueryClient();
   const { data: departments } = useDepartments();
   const { data: allStaff } = useAllStaffMembers();
+  const { data: hrEmployees, isLoading: loadingHR } = useHREmployees();
 
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
+  const [newEmployeeCode, setNewEmployeeCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newDeptIds, setNewDeptIds] = useState<string[]>([]);
   const [filterDept, setFilterDept] = useState<string>("all");
@@ -42,6 +45,7 @@ export default function ManageStaff() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editedName, setEditedName] = useState("");
   const [editedEmail, setEditedEmail] = useState("");
+  const [editedEmployeeCode, setEditedEmployeeCode] = useState("");
   const [editedPassword, setEditedPassword] = useState("");
   const [editedDeptIds, setEditedDeptIds] = useState<string[]>([]);
 
@@ -51,6 +55,24 @@ export default function ManageStaff() {
       : allStaff?.filter((s) =>
           s.assigned_departments?.some((d) => d.id === filterDept)
         );
+
+  const handleHRSelect = (code: string) => {
+    setNewEmployeeCode(code);
+    const employee = hrEmployees?.find(e => e.code === code);
+    if (employee) {
+      if (!newName.trim()) setNewName(employee.full_name);
+      if (!newEmail.trim()) setNewEmail(employee.email);
+    }
+  };
+
+  const handleEditHRSelect = (code: string) => {
+    setEditedEmployeeCode(code);
+    const employee = hrEmployees?.find(e => e.code === code);
+    if (employee) {
+      if (!editedName.trim()) setEditedName(employee.full_name);
+      if (!editedEmail.trim()) setEditedEmail(employee.email);
+    }
+  };
 
   const handleAdd = async () => {
     if (!newName.trim() || newDeptIds.length === 0) {
@@ -71,6 +93,7 @@ export default function ManageStaff() {
         .insert({ 
           name: newName.trim(), 
           email: newEmail.trim() || null,
+          employee_code: newEmployeeCode.trim() || null,
           password_hash: passwordHash,
         })
         .select()
@@ -93,6 +116,7 @@ export default function ManageStaff() {
       toast.success(`${newName.trim()} added successfully`);
       setNewName("");
       setNewEmail("");
+      setNewEmployeeCode("");
       setNewPassword("");
       setNewDeptIds([]);
       queryClient.invalidateQueries({ queryKey: ["all_staff_members"] });
@@ -116,10 +140,11 @@ export default function ManageStaff() {
     }
   };
 
-  const handleEdit = (id: string, currentName: string, currentEmail: string | null, currentDepts: any[], currentPasswordHash: string | null = null) => {
+  const handleEdit = (id: string, currentName: string, currentEmail: string | null, currentEmployeeCode: string | null, currentDepts: any[], currentPasswordHash: string | null = null) => {
     setEditingId(id);
     setEditedName(currentName);
     setEditedEmail(currentEmail || "");
+    setEditedEmployeeCode(currentEmployeeCode || "");
     setEditedPassword(currentPasswordHash ? "***" : ""); // Show *** if password exists
     setEditedDeptIds(currentDepts.map((d) => d.id) || []);
   };
@@ -144,7 +169,8 @@ export default function ManageStaff() {
       // Update staff member info
       const updateData: any = {
         name: editedName.trim(),
-        email: editedEmail.trim() || null
+        email: editedEmail.trim() || null,
+        employee_code: editedEmployeeCode.trim() || null
       };
       
       // Only update password if a new one was provided
@@ -215,6 +241,7 @@ export default function ManageStaff() {
     setEditingId(null);
     setEditedName("");
     setEditedEmail("");
+    setEditedEmployeeCode("");
     setEditedPassword("");
     setEditedDeptIds([]);
   };
@@ -238,7 +265,22 @@ export default function ManageStaff() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-col gap-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div className="space-y-1.5">
+                  <Label>Employee Code</Label>
+                  <Select value={newEmployeeCode} onValueChange={handleHRSelect}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={loadingHR ? "Loading..." : "Select Employee"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {hrEmployees?.map((emp) => (
+                        <SelectItem key={emp.id} value={emp.code}>
+                          {emp.full_name} ({emp.code})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-1.5">
                   <Label>Full Name</Label>
                   <Input
@@ -271,50 +313,50 @@ export default function ManageStaff() {
                   </p>
                 </div>
               </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label>Job Roles</Label>
-                <div className="border rounded-md p-3 space-y-2 bg-background">
-                  {departments?.map((d) => (
-                    <div key={d.id} className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id={`dept-${d.id}`}
-                        checked={newDeptIds.includes(d.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setNewDeptIds([...newDeptIds, d.id]);
-                          } else {
-                            setNewDeptIds(newDeptIds.filter((id) => id !== d.id));
-                          }
-                        }}
-                        className="h-4 w-4 rounded border-gray-300"
-                      />
-                      <Label
-                        htmlFor={`dept-${d.id}`}
-                        className="text-sm font-normal cursor-pointer"
-                      >
-                        {d.name}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-                {newDeptIds.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {newDeptIds.map((deptId) => (
-                      <Badge key={deptId} variant="secondary">
-                        {departments?.find((d) => d.id === deptId)?.name}
-                      </Badge>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>Job Roles</Label>
+                  <div className="border rounded-md p-3 space-y-2 bg-background">
+                    {departments?.map((d) => (
+                      <div key={d.id} className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id={`dept-${d.id}`}
+                          checked={newDeptIds.includes(d.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setNewDeptIds([...newDeptIds, d.id]);
+                            } else {
+                              setNewDeptIds(newDeptIds.filter((id) => id !== d.id));
+                            }
+                          }}
+                          className="h-4 w-4 rounded border-gray-300"
+                        />
+                        <Label
+                          htmlFor={`dept-${d.id}`}
+                          className="text-sm font-normal cursor-pointer"
+                        >
+                          {d.name}
+                        </Label>
+                      </div>
                     ))}
                   </div>
-                )}
-              </div>
-              <div className="flex items-end">
-                <Button onClick={handleAdd} disabled={adding} className="w-full">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add
-                </Button>
-              </div>
+                  {newDeptIds.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {newDeptIds.map((deptId) => (
+                        <Badge key={deptId} variant="secondary">
+                          {departments?.find((d) => d.id === deptId)?.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-end">
+                  <Button onClick={handleAdd} disabled={adding} className="w-full">
+                    {adding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                    Add
+                  </Button>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -342,6 +384,7 @@ export default function ManageStaff() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Code</TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Password</TableHead>
@@ -353,6 +396,26 @@ export default function ManageStaff() {
               <TableBody>
                 {filteredStaff?.map((staff: any) => (
                   <TableRow key={staff.id}>
+                    <TableCell>
+                      {editingId === staff.id ? (
+                        <Select value={editedEmployeeCode} onValueChange={handleEditHRSelect}>
+                          <SelectTrigger className="h-8 w-[140px]">
+                            <SelectValue placeholder="Code" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {hrEmployees?.map((emp) => (
+                              <SelectItem key={emp.id} value={emp.code}>
+                                {emp.full_name} {emp.code}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">
+                          {staff.employee_code || "—"}
+                        </code>
+                      )}
+                    </TableCell>
                     <TableCell className="font-medium">
                       {editingId === staff.id ? (
                         <Input
@@ -455,7 +518,7 @@ export default function ManageStaff() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleEdit(staff.id, staff.name, staff.email, staff.assigned_departments || [], staff.password_hash)}
+                            onClick={() => handleEdit(staff.id, staff.name, staff.email, staff.employee_code, staff.assigned_departments || [], staff.password_hash)}
                           >
                             <Edit2 className="mr-1 h-4 w-4" />
                             Edit
@@ -484,7 +547,7 @@ export default function ManageStaff() {
                 ))}
                 {!filteredStaff?.length && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                       No staff members found. Add some above!
                     </TableCell>
                   </TableRow>
