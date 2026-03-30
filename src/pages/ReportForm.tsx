@@ -627,13 +627,13 @@ export default function ReportForm() {
                 <FileText className="h-4 w-4" />
                 Daily Report
               </TabsTrigger>
-              <TabsTrigger
+              {/* <TabsTrigger
                 value="timesheet"
                 className="flex items-center gap-2 text-sm font-semibold data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-200"
               >
                 <Clock className="h-4 w-4" />
                 Timesheet
-              </TabsTrigger>
+              </TabsTrigger> */}
             </TabsList>
 
             {/* ==================== DAILY REPORT TAB ==================== */}
