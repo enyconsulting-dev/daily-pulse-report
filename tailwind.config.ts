@@ -14,8 +14,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["DM Sans", "system-ui", "sans-serif"],
-        display: ["Space Grotesk", "system-ui", "sans-serif"],
+        sans: ["Tahoma", "MS Sans Serif", "Microsoft Sans Serif", "Arial", "sans-serif"],
+        display: ["Tahoma", "MS Sans Serif", "Arial", "sans-serif"],
+        mono: ["Courier New", "Courier", "monospace"],
       },
       colors: {
         border: "hsl(var(--border))",
