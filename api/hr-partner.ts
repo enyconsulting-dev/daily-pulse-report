@@ -12,12 +12,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       method: req.method,
       headers: {
         'x-api-key': apiKey,
-        'Content-Type': 'application/json',
       },
     };
 
     if (req.method !== 'GET' && req.method !== 'HEAD') {
-      options.body = JSON.stringify(req.body);
+      if (urlPath === 'timeclock') {
+        const formData = new FormData();
+        for (const key in req.body) {
+          formData.append(key, req.body[key]);
+        }
+        options.body = formData;
+      } else {
+        (options.headers as any)['Content-Type'] = 'application/json';
+        options.body = JSON.stringify(req.body);
+      }
     }
 
     const response = await fetch(targetUrl, options);
