@@ -1,83 +1,81 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Space+Grotesk:wght@300..700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 220 20% 97%;
-    --foreground: 220 30% 12%;
+    /* Win2000 / Windows XP Luna silver palette */
+    --background: 0 0% 83%;          /* #D4D0C8 classic desktop grey */
+    --foreground: 0 0% 0%;           /* black text */
 
-    --card: 0 0% 100%;
-    --card-foreground: 220 30% 12%;
+    --card: 0 0% 83%;                /* same grey, cards are raised panels */
+    --card-foreground: 0 0% 0%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 30% 12%;
+    --popover-foreground: 0 0% 0%;
 
-    --primary: 220 70% 50%;
+    --primary: 213 72% 38%;          /* Win2000 title-bar blue #1F5FAD approx */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 15% 92%;
-    --secondary-foreground: 220 30% 20%;
+    --secondary: 0 0% 75%;           /* mid-grey */
+    --secondary-foreground: 0 0% 0%;
 
-    --muted: 220 15% 94%;
-    --muted-foreground: 220 10% 46%;
+    --muted: 0 0% 88%;
+    --muted-foreground: 0 0% 35%;
 
     --accent: 38 92% 50%;
-    --accent-foreground: 0 0% 100%;
+    --accent-foreground: 0 0% 0%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 15% 88%;
-    --input: 220 15% 88%;
-    --ring: 220 70% 50%;
+    --border: 0 0% 55%;
+    --input: 0 0% 100%;
+    --ring: 213 72% 38%;
 
-    --radius: 0.625rem;
+    --radius: 0rem;                  /* no rounded corners in Win2000 */
 
-    --sidebar-background: 220 30% 12%;
-    --sidebar-foreground: 220 15% 92%;
-    --sidebar-primary: 220 70% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 25% 20%;
-    --sidebar-accent-foreground: 220 15% 92%;
-    --sidebar-border: 220 25% 22%;
-    --sidebar-ring: 220 70% 50%;
+    --sidebar-background: 213 72% 38%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 213 60% 28%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 213 50% 25%;
+    --sidebar-ring: 213 72% 50%;
 
-    --success: 152 60% 42%;
+    --success: 120 50% 35%;
     --success-foreground: 0 0% 100%;
+
+    /* Bevel colours */
+    --bevel-light: #ffffff;
+    --bevel-dark: #808080;
+    --bevel-darkest: #404040;
+    --bevel-mid: #D4D0C8;
   }
 
+  /* No dark mode overrides — Win2000 is always "light" */
   .dark {
-    --background: 220 25% 8%;
-    --foreground: 220 15% 92%;
-    --card: 220 25% 12%;
-    --card-foreground: 220 15% 92%;
-    --popover: 220 25% 12%;
-    --popover-foreground: 220 15% 92%;
-    --primary: 220 70% 60%;
+    --background: 0 0% 83%;
+    --foreground: 0 0% 0%;
+    --card: 0 0% 83%;
+    --card-foreground: 0 0% 0%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
+    --primary: 213 72% 38%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 20% 18%;
-    --secondary-foreground: 220 15% 92%;
-    --muted: 220 20% 18%;
-    --muted-foreground: 220 10% 55%;
-    --accent: 38 92% 55%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 62% 30.6%;
+    --secondary: 0 0% 75%;
+    --secondary-foreground: 0 0% 0%;
+    --muted: 0 0% 88%;
+    --muted-foreground: 0 0% 35%;
+    --accent: 38 92% 50%;
+    --accent-foreground: 0 0% 0%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --border: 220 20% 20%;
-    --input: 220 20% 20%;
-    --ring: 220 70% 60%;
-    --sidebar-background: 220 30% 6%;
-    --sidebar-foreground: 220 15% 92%;
-    --sidebar-primary: 220 70% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 25% 14%;
-    --sidebar-accent-foreground: 220 15% 92%;
-    --sidebar-border: 220 25% 14%;
-    --sidebar-ring: 220 70% 60%;
-    --success: 152 60% 42%;
+    --border: 0 0% 55%;
+    --input: 0 0% 100%;
+    --ring: 213 72% 38%;
+    --success: 120 50% 35%;
     --success-foreground: 0 0% 100%;
   }
 }
@@ -85,9 +83,196 @@
 @layer base {
   * {
     @apply border-border;
+    box-sizing: border-box;
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    font-family: Tahoma, "MS Sans Serif", "Microsoft Sans Serif", Arial, sans-serif;
+    font-size: 11px;
+    background-color: #D4D0C8;
+    color: #000000;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: Tahoma, "MS Sans Serif", Arial, sans-serif;
   }
 }
+
+/* =============================================
+   Windows 2000 / XP-style component overrides
+   ============================================= */
+
+/* Raised 3-D button */
+.win-btn {
+  background-color: #D4D0C8;
+  border-top:    2px solid #ffffff;
+  border-left:   2px solid #ffffff;
+  border-right:  2px solid #404040;
+  border-bottom: 2px solid #404040;
+  box-shadow: inset 1px 1px 0 #E8E4DC, inset -1px -1px 0 #808080;
+  font-family: Tahoma, Arial, sans-serif;
+  font-size: 11px;
+  padding: 3px 12px;
+  cursor: pointer;
+  color: #000;
+}
+.win-btn:active {
+  border-top:    2px solid #404040;
+  border-left:   2px solid #404040;
+  border-right:  2px solid #ffffff;
+  border-bottom: 2px solid #ffffff;
+  box-shadow: inset 1px 1px 0 #808080, inset -1px -1px 0 #E8E4DC;
+  padding: 4px 11px 2px 13px;
+}
+.win-btn:focus {
+  outline: 1px dotted #000;
+  outline-offset: -4px;
+}
+
+/* Inset field (text inputs) */
+.win-field {
+  background-color: #ffffff;
+  border-top:    2px solid #808080;
+  border-left:   2px solid #808080;
+  border-right:  2px solid #D4D0C8;
+  border-bottom: 2px solid #D4D0C8;
+  box-shadow: inset 1px 1px 0 #404040;
+  font-family: Tahoma, Arial, sans-serif;
+  font-size: 11px;
+  padding: 2px 4px;
+  color: #000;
+}
+.win-field:focus {
+  outline: none;
+  border-color: #808080;
+}
+
+/* Raised panel / card */
+.win-panel {
+  background-color: #D4D0C8;
+  border-top:    2px solid #ffffff;
+  border-left:   2px solid #ffffff;
+  border-right:  2px solid #404040;
+  border-bottom: 2px solid #404040;
+  box-shadow: inset 1px 1px 0 #E8E4DC, inset -1px -1px 0 #808080;
+  padding: 0;
+}
+
+/* Sunken / inset panel */
+.win-inset {
+  background-color: #D4D0C8;
+  border-top:    2px solid #808080;
+  border-left:   2px solid #808080;
+  border-right:  2px solid #ffffff;
+  border-bottom: 2px solid #ffffff;
+  box-shadow: inset 1px 1px 0 #404040, inset -1px -1px 0 #E8E4DC;
+}
+
+/* Window title bar */
+.win-titlebar {
+  background: linear-gradient(to right, #0A246A 0%, #A6CAF0 100%);
+  color: #ffffff;
+  font-weight: bold;
+  font-size: 12px;
+  padding: 3px 6px 3px 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  user-select: none;
+}
+
+/* Window chrome wrapper */
+.win-window {
+  background-color: #D4D0C8;
+  border-top:    2px solid #ffffff;
+  border-left:   2px solid #ffffff;
+  border-right:  2px solid #404040;
+  border-bottom: 2px solid #404040;
+  box-shadow: 1px 1px 0 #808080;
+}
+
+/* Tab button - classic Win2000 look */
+.win-tab {
+  background-color: #D4D0C8;
+  border-top:   2px solid #ffffff;
+  border-left:  2px solid #ffffff;
+  border-right: 2px solid #808080;
+  border-bottom: none;
+  font-family: Tahoma, Arial, sans-serif;
+  font-size: 11px;
+  padding: 4px 12px 6px 12px;
+  position: relative;
+  cursor: pointer;
+  color: #000;
+  z-index: 1;
+}
+.win-tab-active {
+  background-color: #D4D0C8;
+  border-top:   2px solid #ffffff;
+  border-left:  2px solid #ffffff;
+  border-right: 2px solid #808080;
+  border-bottom: 2px solid #D4D0C8; /* blend into content */
+  font-weight: bold;
+  z-index: 2;
+  margin-bottom: -2px;
+}
+.win-tab-inactive {
+  background-color: #BFBDB5;
+  margin-top: 2px;
+  border-bottom: 2px solid #808080;
+}
+
+/* Group box (fieldset style) */
+.win-groupbox {
+  border: 2px groove #808080;
+  padding: 8px;
+  margin: 0;
+  position: relative;
+}
+.win-groupbox legend {
+  font-family: Tahoma, Arial, sans-serif;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 0 4px;
+  color: #000;
+}
+
+/* Scrollbar (Webkit) */
+::-webkit-scrollbar { width: 16px; height: 16px; background: #D4D0C8; }
+::-webkit-scrollbar-track { background: #D4D0C8; border: 1px solid #808080; }
+::-webkit-scrollbar-thumb {
+  background: #D4D0C8;
+  border-top:    1px solid #ffffff;
+  border-left:   1px solid #ffffff;
+  border-right:  1px solid #404040;
+  border-bottom: 1px solid #404040;
+}
+::-webkit-scrollbar-button {
+  background: #D4D0C8;
+  border-top:    1px solid #ffffff;
+  border-left:   1px solid #ffffff;
+  border-right:  1px solid #404040;
+  border-bottom: 1px solid #404040;
+  display: block;
+  height: 16px;
+  width: 16px;
+}
+
+/* Status bar horizontal separator */
+.win-separator {
+  border: none;
+  border-top: 1px solid #808080;
+  border-bottom: 1px solid #ffffff;
+  margin: 4px 0;
+}
+
+/* Select override */
+select.win-field {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Cpath d='M4 6l4 4 4-4' stroke='%23000' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 2px center;
+  padding-right: 20px;
+}
+

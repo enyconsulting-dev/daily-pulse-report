@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  useDepartments,
   useAllStaffMembers,
   useDepartmentMetrics,
   useCheckTodayReport,
@@ -11,26 +10,22 @@ import {
 } from "@/hooks/useStaffAndMetrics";
 import { useHRSubmit } from "@/hooks/useHRPartner";
 import { verifyPassword } from "@/lib/passwordUtils";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { CheckCircle2, Send, CalendarIcon, Clock, FileText } from "lucide-react";
-import { format, getDay, lastDayOfMonth, subDays } from "date-fns";
-import { cn } from "@/lib/utils";
+import { Send, Lock } from "lucide-react";
+import { format, getDay, lastDayOfMonth } from "date-fns";
 import AppLayout from "@/components/AppLayout";
+import {
+  WinButton,
+  WinInput,
+  WinTextarea,
+  WinSelect,
+  WinPanel,
+  WinGroupBox,
+  WinLabel,
+  WinSeparator,
+  WinTabs,
+  WinInfoBox,
+} from "@/components/Win2k";
 
 interface TimesheetEntry {
   start_time: string;
@@ -39,17 +34,14 @@ interface TimesheetEntry {
 }
 
 function isLastFridayOfMonth(date: Date): boolean {
-  if (getDay(date) !== 5) return false; // Not a Friday
+  if (getDay(date) !== 5) return false;
   const monthEnd = lastDayOfMonth(date);
-  // Check if there's no more Friday left in this month
   const daysUntilEnd = monthEnd.getDate() - date.getDate();
   return daysUntilEnd < 7;
 }
 
 function getDefaultTimesheetEntries(date: Date): TimesheetEntry[] {
-  const dayOfWeek = getDay(date); // 0=Sun, 1=Mon, ..., 5=Fri
-
-  // Monday: first slot is 9:00–10:30 "Start of the week meeting", rest ends at 17:00
+  const dayOfWeek = getDay(date);
   if (dayOfWeek === 1) {
     return [
       { start_time: "09:00", end_time: "10:30", notes: "Start of the week meeting" },
@@ -62,8 +54,6 @@ function getDefaultTimesheetEntries(date: Date): TimesheetEntry[] {
       { start_time: "16:30", end_time: "17:00", notes: "" },
     ];
   }
-
-  // Friday: last slot is 15:30–17:00
   if (dayOfWeek === 5) {
     const lastSlotNote = isLastFridayOfMonth(date) ? "End of Month Review" : "Weekly PRD";
     const base: TimesheetEntry[] = Array.from({ length: 7 }, (_, i) => ({
@@ -71,13 +61,10 @@ function getDefaultTimesheetEntries(date: Date): TimesheetEntry[] {
       end_time: `${String(10 + i).padStart(2, "0")}:00`,
       notes: "",
     }));
-    // Adjust slot 7 to end at 15:30 and add the final slot
     base[6] = { ...base[6], end_time: "15:30" };
     base.push({ start_time: "15:30", end_time: "17:00", notes: lastSlotNote });
     return base;
   }
-
-  // Default: normal 1-hour slots from 9AM to 5PM
   return Array.from({ length: 8 }, (_, i) => ({
     start_time: `${String(9 + i).padStart(2, "0")}:00`,
     end_time: `${String(10 + i).padStart(2, "0")}:00`,
@@ -85,10 +72,10 @@ function getDefaultTimesheetEntries(date: Date): TimesheetEntry[] {
   }));
 }
 
-function addOneHour(time: string): string {
-  const [h, m] = time.split(":").map(Number);
-  return `${String(h + 1).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-}
+const BASE_FONT: React.CSSProperties = {
+  fontFamily: "Tahoma, 'MS Sans Serif', Arial, sans-serif",
+  fontSize: "11px",
+};
 
 export default function ReportForm() {
   const queryClient = useQueryClient();
@@ -103,9 +90,9 @@ export default function ReportForm() {
   const [uncompletedNotes, setUncompletedNotes] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [reportDate, setReportDate] = useState<Date>(new Date());
-  const [activeTab, setActiveTab] = useState("report");
+  const [activeTab, setActiveTab] = useState("Daily Report");
+  const [showDateInput, setShowDateInput] = useState(false);
 
-  // Timesheet state
   const [timesheetEntries, setTimesheetEntries] = useState<TimesheetEntry[]>(
     () => getDefaultTimesheetEntries(new Date())
   );
@@ -117,51 +104,31 @@ export default function ReportForm() {
   const { data: allStaff } = useAllStaffMembers();
   const { data: assignedDepartments } = useStaffAssignedDepartments(selectedStaffId);
   const { data: metrics } = useDepartmentMetrics(selectedDepartmentId);
-  const { data: todayReports, isLoading: checkingReport } =
-    useCheckTodayReport(selectedStaffId, reportDateStr);
+  const { data: todayReports } = useCheckTodayReport(selectedStaffId, reportDateStr);
   const { data: todayTimesheets } = useCheckTodayTimesheet(selectedStaffId, reportDateStr);
 
   const selectedStaff = allStaff?.find((s) => s.id === selectedStaffId) as any;
   const selectedDept = assignedDepartments?.find((d) => d.id === selectedDepartmentId);
-  
-  // Check if already submitted for this specific department
+
   const alreadySubmittedForDept = todayReports?.some(
     (r: any) => r.department_id === selectedDepartmentId
   ) || false;
-
-  // Check if timesheet already submitted
   const alreadySubmittedTimesheet = (todayTimesheets?.length ?? 0) > 0;
-
-  // Get departments that still need reports
   const departmentsNeedingReports = assignedDepartments?.filter(
     (d) => !todayReports?.some((r: any) => r.department_id === d.id)
   ) || [];
 
-  // Check if password verification is needed
   const needsPasswordVerification = selectedStaff?.password_hash && !passwordVerified;
-
-  // Check if staff is ready (selected + password verified if needed)
   const staffReady = selectedStaff && (passwordVerified || !selectedStaff.password_hash);
 
   const handlePasswordVerify = async () => {
-    if (!selectedStaff?.password_hash) {
-      setPasswordVerified(true);
-      return;
-    }
-
+    if (!selectedStaff?.password_hash) { setPasswordVerified(true); return; }
     setVerifyingPassword(true);
     try {
       const isValid = await verifyPassword(enteredPassword, selectedStaff.password_hash);
-      if (isValid) {
-        setPasswordVerified(true);
-        toast.success("Password verified!");
-      } else {
-        toast.error("Incorrect password");
-        setEnteredPassword("");
-      }
-    } catch (error: any) {
-      toast.error("Error verifying password");
-    }
+      if (isValid) { setPasswordVerified(true); toast.success("Password verified!"); }
+      else { toast.error("Incorrect password"); setEnteredPassword(""); }
+    } catch { toast.error("Error verifying password"); }
     setVerifyingPassword(false);
   };
 
@@ -169,41 +136,19 @@ export default function ReportForm() {
     setTimesheetEntries((prev) => {
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value };
-
-      // When end_time changes, cascade to the next row's start_time
-      if (field === "end_time" && index < updated.length - 1) {
+      if (field === "end_time" && index < updated.length - 1)
         updated[index + 1] = { ...updated[index + 1], start_time: value };
-      }
-
       return updated;
     });
   };
 
   const handleTimesheetSubmit = async () => {
     if (!selectedStaffId) return;
-
-    if (alreadySubmittedTimesheet) {
-      toast.error("Timesheet already submitted for this day");
-      return;
-    }
-
-    // Filter entries that have at least start_time and end_time filled
-    const filledEntries = timesheetEntries.filter(
-      (e) => e.start_time.trim() && e.end_time.trim()
-    );
-
-    if (filledEntries.length === 0) {
-      toast.error("Please fill in at least one time entry");
-      return;
-    }
-
-    // Validate that end_time is after start_time for each filled entry
+    if (alreadySubmittedTimesheet) { toast.error("Timesheet already submitted for this day"); return; }
+    const filledEntries = timesheetEntries.filter((e) => e.start_time.trim() && e.end_time.trim());
+    if (filledEntries.length === 0) { toast.error("Please fill in at least one time entry"); return; }
     const invalidEntries = filledEntries.filter((e) => e.end_time <= e.start_time);
-    if (invalidEntries.length > 0) {
-      toast.error("End time must be after start time for all entries");
-      return;
-    }
-
+    if (invalidEntries.length > 0) { toast.error("End time must be after start time for all entries"); return; }
     setSubmittingTimesheet(true);
     try {
       const rows = filledEntries.map((e) => ({
@@ -213,78 +158,32 @@ export default function ReportForm() {
         end_time: `${reportDateStr} ${e.end_time}`,
         notes: e.notes || null,
       }));
-
       const { error } = await supabase.from("timesheets").insert(rows);
-
       if (error) throw error;
-
       toast.success("Timesheet submitted successfully!");
-      // setTimesheetEntries(getDefaultTimesheetEntries(reportDate));
-      // queryClient.invalidateQueries({ queryKey: ["today_timesheet"] });
-
-      // Send to HR Partner dummy hook
       if (selectedStaff?.employee_code) {
-        // console.log("Sending to HR Partner:", {
-        //   employee_code: selectedStaff.employee_code,
-        //   timesheet_data: filledEntries
-        // });
-        hrSubmit.mutate({
-          employee_code: selectedStaff.employee_code,
-          timesheet_data: filledEntries
-        });
-      } else {
-        console.warn("No employee code found for selected staff, skipping HR Partner submission");
+        hrSubmit.mutate({ employee_code: selectedStaff.employee_code, timesheet_data: filledEntries });
       }
-    } catch (err: any) {
-      toast.error(err.message || "Failed to submit timesheet");
-    } finally {
-      setSubmittingTimesheet(false);
-    }
+    } catch (err: any) { toast.error(err.message || "Failed to submit timesheet"); }
+    finally { setSubmittingTimesheet(false); }
   };
 
   const handleSubmit = async () => {
     if (!selectedStaffId || !selectedDepartmentId || !metrics) return;
-
-    if (alreadySubmittedForDept) {
-      toast.error("Report already submitted for this department today");
-      return;
-    }
-
-    // Get metrics that have values entered
+    if (alreadySubmittedForDept) { toast.error("Report already submitted for this department today"); return; }
     const filledMetrics = metrics.filter((m) => metricValues[m.id]?.trim());
-
-    // Check if at least one metric is filled
-    if (filledMetrics.length === 0) {
-      toast.error("Please fill in at least one metric");
-      return;
-    }
-
-    // Validate only the filled metrics have valid values
+    if (filledMetrics.length === 0) { toast.error("Please fill in at least one metric"); return; }
     const invalidFields = filledMetrics.filter((m) => {
       const value = metricValues[m.id];
       const numValue = parseFloat(value);
-      
-      if (isNaN(numValue)) {
-        return true;
-      }
-      
-      if (numValue < 0) {
-        return true;
-      }
-      
-      if (m.metric_type === "percentage" && (numValue < 0 || numValue > 100)) {
-        return true;
-      }
-      
+      if (isNaN(numValue) || numValue < 0) return true;
+      if (m.metric_type === "percentage" && (numValue < 0 || numValue > 100)) return true;
       return false;
     });
-
     if (invalidFields.length > 0) {
-      const fieldNames = invalidFields.map((f) => f.metric_name).join(", ");
-      toast.error(`Invalid values for: ${fieldNames}. Please enter valid numbers.`);
+      toast.error(`Invalid values for: ${invalidFields.map((f) => f.metric_name).join(", ")}`);
       return;
     }
-
     setSubmitting(true);
     try {
       const { data: report, error: reportError } = await supabase
@@ -301,10 +200,7 @@ export default function ReportForm() {
         .single();
 
       if (reportError) {
-        if (reportError.code === "23505") {
-          toast.error("You have already submitted a report for this department today");
-          return;
-        }
+        if (reportError.code === "23505") { toast.error("Already submitted for this department today"); return; }
         throw reportError;
       }
 
@@ -313,86 +209,33 @@ export default function ReportForm() {
         metric_id: m.id,
         value: parseFloat(metricValues[m.id]),
       }));
-
-      const { error: entriesError } = await supabase
-        .from("report_entries")
-        .insert(entries);
-
+      const { error: entriesError } = await supabase.from("report_entries").insert(entries);
       if (entriesError) throw entriesError;
 
-      // Send data to Google Chat webhook
       const metricsText = filledMetrics
         .map((m) => `${m.metric_name}: ${metricValues[m.id]}${m.metric_type === "percentage" ? "%" : ""}`)
         .join("\n");
 
       const webhookMessage = {
         text: `Daily Report Submission`,
-        cards: [
-          {
-            header: {
-              title: "📊 Daily Report Submitted",
-              subtitle: `${format(reportDate, "PPP")}`,
-            },
-            sections: [
-              {
-                widgets: [
-                  {
-                    textParagraph: {
-                      text: `<b>Staff:</b> ${selectedStaff?.name}\n<b>Department:</b> ${selectedDept?.name}`,
-                    },
-                  },
-                  {
-                    textParagraph: {
-                      text: `<b>Key Metrics:</b>\n${metricsText}`,
-                    },
-                  },
-                  ...(completedNotes
-                    ? [
-                        {
-                          textParagraph: {
-                            text: `<b>✓ Completed:</b>\n${completedNotes}`,
-                          },
-                        },
-                      ]
-                    : []),
-                  ...(blockerNotes
-                    ? [
-                        {
-                          textParagraph: {
-                            text: `<b>⚠️ Blockers:</b>\n${blockerNotes}`,
-                          },
-                        },
-                      ]
-                    : []),
-                  ...(uncompletedNotes
-                    ? [
-                        {
-                          textParagraph: {
-                            text: `<b>→ Next Priorities:</b>\n${uncompletedNotes}`,
-                          },
-                        },
-                      ]
-                    : []),
-                ],
-              },
+        cards: [{
+          header: { title: "📊 Daily Report Submitted", subtitle: `${format(reportDate, "PPP")}` },
+          sections: [{
+            widgets: [
+              { textParagraph: { text: `<b>Staff:</b> ${selectedStaff?.name}\n<b>Department:</b> ${selectedDept?.name}` } },
+              { textParagraph: { text: `<b>Key Metrics:</b>\n${metricsText}` } },
+              ...(completedNotes ? [{ textParagraph: { text: `<b>✓ Completed:</b>\n${completedNotes}` } }] : []),
+              ...(blockerNotes ? [{ textParagraph: { text: `<b>⚠️ Blockers:</b>\n${blockerNotes}` } }] : []),
+              ...(uncompletedNotes ? [{ textParagraph: { text: `<b>→ Next Priorities:</b>\n${uncompletedNotes}` } }] : []),
             ],
-          },
-        ],
+          }],
+        }],
       };
 
       await fetch(
         "https://chat.googleapis.com/v1/spaces/AAQAvJmVRG8/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=MuMyJFHu0KonPMNyB-qk3qbYka8MMR52yITuoaQUA_I",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(webhookMessage),
-        }
-      ).catch((err) => {
-        console.error("Error sending to Google Chat:", err);
-        // Don't fail the report submission if webhook fails
-      });
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(webhookMessage) }
+      ).catch((err) => console.error("Error sending to Google Chat:", err));
 
       toast.success("Report submitted successfully!");
       setMetricValues({});
@@ -401,496 +244,396 @@ export default function ReportForm() {
       setUncompletedNotes("");
       setSelectedDepartmentId(undefined);
       queryClient.invalidateQueries({ queryKey: ["today_report"] });
-    } catch (err: any) {
-      toast.error(err.message || "Failed to submit report");
-    } finally {
-      setSubmitting(false);
-    }
+    } catch (err: any) { toast.error(err.message || "Failed to submit report"); }
+    finally { setSubmitting(false); }
   };
-
-  // Shared staff selection + password section
-  const renderStaffSection = () => (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">Staff Information</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label>Report Date</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  "w-full justify-start text-left font-normal",
-                  !reportDate && "text-muted-foreground"
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {reportDate ? format(reportDate, "PPP") : "Pick a date"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={reportDate}
-                onSelect={(date) => {
-                  if (date) {
-                    setReportDate(date);
-                    setSelectedDepartmentId(undefined);
-                    setMetricValues({});
-                    setTimesheetEntries(getDefaultTimesheetEntries(date));
-                  }
-                }}
-                disabled={(date) => date > new Date()}
-                fromMonth={new Date()}
-                toDate={new Date()}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-
-        <div className="space-y-2">
-          <Label>Select your name</Label>
-          <Select
-            value={selectedStaffId}
-            onValueChange={(v) => {
-              setSelectedStaffId(v);
-              setSelectedDepartmentId(undefined);
-              setMetricValues({});
-              setPasswordVerified(false);
-              setEnteredPassword("");
-              setTimesheetEntries(getDefaultTimesheetEntries(reportDate));
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Choose staff member..." />
-            </SelectTrigger>
-            <SelectContent>
-              {allStaff?.map((staff) => (
-                <SelectItem key={staff.id} value={staff.id}>
-                  {staff.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {selectedStaff && selectedStaff.password_hash && !passwordVerified && (
-          <Card className="border-orange-200 bg-orange-50">
-            <CardContent className="pt-6">
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="password" className="text-sm">
-                    Password Required
-                  </Label>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Please enter your password to access the reporting form
-                  </p>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Enter your password"
-                    value={enteredPassword}
-                    onChange={(e) => setEnteredPassword(e.target.value)}
-                    onKeyPress={(e) => e.key === "Enter" && handlePasswordVerify()}
-                  />
-                </div>
-                <Button
-                  onClick={handlePasswordVerify}
-                  disabled={!enteredPassword.trim() || verifyingPassword}
-                  className="w-full"
-                >
-                  {verifyingPassword ? "Verifying..." : "Verify Password"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </CardContent>
-    </Card>
-  );
-
-  // Report-specific department selector + status badges
-  const renderDepartmentSection = () => (
-    <>
-      {selectedStaff && assignedDepartments && assignedDepartments.length > 0 && staffReady && (
-        <>
-          <Card className="mt-6 mb-6">
-            <CardHeader>
-              <CardTitle className="text-lg">Department</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Job Roles</Label>
-                <Select
-                  value={selectedDepartmentId}
-                  onValueChange={(v) => {
-                    setSelectedDepartmentId(v);
-                    setMetricValues({});
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose your department..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {assignedDepartments.map((dept) => {
-                      const submitted = todayReports?.some(
-                        (r: any) => r.department_id === dept.id
-                      );
-                      return (
-                        <SelectItem key={dept.id} value={dept.id}>
-                          {dept.name} {submitted ? "✓ (Submitted)" : ""}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {assignedDepartments.length > 1 && (
-                <div className="rounded-lg bg-blue-50 px-4 py-3 border border-blue-200">
-                  <p className="text-sm font-medium text-blue-900 mb-2">
-                    Assigned Departments ({assignedDepartments.length})
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {assignedDepartments.map((dept) => {
-                      const submitted = todayReports?.some(
-                        (r: any) => r.department_id === dept.id
-                      );
-                      return (
-                        <span
-                          key={dept.id}
-                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
-                            submitted
-                              ? "bg-green-100 text-green-800"
-                              : "bg-orange-100 text-orange-800"
-                          }`}
-                        >
-                          {dept.name} {submitted ? "✓" : "✗"}
-                        </span>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </>
-      )}
-
-      {selectedStaff && assignedDepartments && assignedDepartments.length === 0 && (
-        <div className="mt-6 rounded-lg bg-orange-50 px-4 py-3 border border-orange-200">
-          <p className="text-sm text-orange-800">
-            No departments assigned. Please contact your administrator.
-          </p>
-        </div>
-      )}
-    </>
-  );
-
-  // Timesheet row number badge
-  const RowBadge = ({ num }: { num: number }) => (
-    <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 text-white text-sm font-bold shadow-md">
-      {num}
-    </div>
-  );
 
   return (
     <AppLayout>
-      <div className="mx-auto max-w-2xl animate-fade-in">
-        <div className="mb-8">
-          <h1 className="font-display text-3xl font-bold tracking-tight text-foreground">
-            Daily Report
-          </h1>
-          <p className="mt-1 text-muted-foreground">
-            Select your name and fill in today's metrics or timesheet
+      <div style={{ maxWidth: "640px", margin: "0 auto" }}>
+
+        {/* Page heading as a window title bar */}
+        <WinPanel
+          title="Daily Report Submission"
+          titleBarColor="blue"
+          icon={
+            <svg width="14" height="14" viewBox="0 0 16 16" style={{ flexShrink: 0 }}>
+              <rect x="2" y="1" width="10" height="14" fill="#fff" stroke="#fff" strokeWidth="0.5"/>
+              <polygon points="8,1 12,5 8,5" fill="#A6CAF0"/>
+              <line x1="4" y1="8" x2="10" y2="8" stroke="#fff" strokeWidth="1"/>
+              <line x1="4" y1="10" x2="10" y2="10" stroke="#fff" strokeWidth="1"/>
+            </svg>
+          }
+          style={{ marginBottom: "10px" }}
+        >
+          <p style={{ ...BASE_FONT, margin: 0 }}>
+            Select your name and fill in {"today's"} metrics.
           </p>
-        </div>
+        </WinPanel>
 
-        {/* Staff selection is always visible */}
-        {renderStaffSection()}
+        {/* ── Staff Information ── */}
+        <WinGroupBox legend="Staff Information" style={{ marginBottom: "10px" }}>
+          {/* Date field */}
+          <div style={{ marginBottom: "8px" }}>
+            <WinLabel>Report Date:</WinLabel>
+            <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+              <WinInput
+                type="date"
+                value={reportDateStr}
+                max={format(new Date(), "yyyy-MM-dd")}
+                onChange={(e) => {
+                  const d = new Date(e.target.value + "T12:00:00");
+                  if (!isNaN(d.getTime())) {
+                    setReportDate(d);
+                    setSelectedDepartmentId(undefined);
+                    setMetricValues({});
+                    setTimesheetEntries(getDefaultTimesheetEntries(d));
+                  }
+                }}
+                style={{ width: "160px" }}
+              />
+              <span style={{ ...BASE_FONT, color: "#555" }}>
+                ({format(reportDate, "EEEE, MMMM d, yyyy")})
+              </span>
+            </div>
+          </div>
 
-        {/* Tabs only show after staff is ready */}
+          <WinSeparator />
+
+          {/* Staff selector */}
+          <div style={{ marginBottom: "8px" }}>
+            <WinLabel htmlFor="staff-select">Select your name:</WinLabel>
+            <WinSelect
+              id="staff-select"
+              value={selectedStaffId ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                setSelectedStaffId(v || undefined);
+                setSelectedDepartmentId(undefined);
+                setMetricValues({});
+                setPasswordVerified(false);
+                setEnteredPassword("");
+                setTimesheetEntries(getDefaultTimesheetEntries(reportDate));
+              }}
+            >
+              <option value="">-- Choose staff member --</option>
+              {allStaff?.map((staff) => (
+                <option key={staff.id} value={staff.id}>{staff.name}</option>
+              ))}
+            </WinSelect>
+          </div>
+
+          {/* Password prompt */}
+          {selectedStaff && selectedStaff.password_hash && !passwordVerified && (
+            <div style={{
+              background: "#FFFBE6",
+              border: "1px solid #A07000",
+              padding: "8px",
+              marginTop: "6px",
+            }}>
+              <WinLabel htmlFor="staff-password" style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                <Lock size={11} /> Password Required
+              </WinLabel>
+              <p style={{ ...BASE_FONT, color: "#555", margin: "2px 0 6px" }}>
+                Please enter your password to access the reporting form.
+              </p>
+              <div style={{ display: "flex", gap: "6px" }}>
+                <WinInput
+                  id="staff-password"
+                  type="password"
+                  placeholder="Enter your password"
+                  value={enteredPassword}
+                  onChange={(e) => setEnteredPassword(e.target.value)}
+                  onKeyPress={(e) => e.key === "Enter" && handlePasswordVerify()}
+                  style={{ flex: 1 }}
+                />
+                <WinButton
+                  onClick={handlePasswordVerify}
+                  disabled={!enteredPassword.trim() || verifyingPassword}
+                >
+                  {verifyingPassword ? "Verifying…" : "OK"}
+                </WinButton>
+              </div>
+            </div>
+          )}
+        </WinGroupBox>
+
+        {/* ── Tabs + content ── */}
         {staffReady && (
-          <Tabs
-            value={activeTab}
-            onValueChange={setActiveTab}
-            className="mt-6"
-          >
-            <TabsList className="grid w-full grid-cols-2 h-12">
-              <TabsTrigger
-                value="report"
-                className="flex items-center gap-2 text-sm font-semibold data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-200"
-              >
-                <FileText className="h-4 w-4" />
-                Daily Report
-              </TabsTrigger>
-              {/* <TabsTrigger
-                value="timesheet"
-                className="flex items-center gap-2 text-sm font-semibold data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-200"
-              >
-                <Clock className="h-4 w-4" />
-                Timesheet
-              </TabsTrigger> */}
-            </TabsList>
+          <div>
+            {/* Tab row */}
+            <WinTabs
+              tabs={["Daily Report", "Timesheet"]}
+              active={activeTab}
+              onChange={setActiveTab}
+            />
 
-            {/* ==================== DAILY REPORT TAB ==================== */}
-            <TabsContent value="report" className="mt-6 space-y-0">
-              {renderDepartmentSection()}
+            {/* Tab content area */}
+            <div style={{
+              background: "#D4D0C8",
+              borderTop: "2px solid #808080",
+              borderLeft: "2px solid #ffffff",
+              borderRight: "2px solid #404040",
+              borderBottom: "2px solid #404040",
+              padding: "10px",
+              boxShadow: "inset 1px 1px 0 #E8E4DC, inset -1px -1px 0 #808080",
+            }}>
 
-              {selectedStaff && selectedDepartmentId && alreadySubmittedForDept && (
-                <Card className="mt-6 border-success/30 bg-success/5">
-                  <CardContent className="flex items-center gap-3 py-6">
-                    <CheckCircle2 className="h-6 w-6 text-success" />
-                    <div>
-                      <p className="font-medium text-foreground">
-                        Report already submitted
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        You've already submitted your report for {selectedDept?.name} on {format(reportDate, "PPP")}.
-                        {departmentsNeedingReports.length > 0 && (
-                          <> Consider submitting for other departments: {departmentsNeedingReports
-                            .map((d) => d.name)
-                            .join(", ")}</>
-                        )}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+              {/* ════════ DAILY REPORT TAB ════════ */}
+              {activeTab === "Daily Report" && (
+                <div>
+                  {/* Department selector */}
+                  {selectedStaff && assignedDepartments && assignedDepartments.length > 0 && (
+                    <WinGroupBox legend="Department / Job Role" style={{ marginBottom: "10px" }}>
+                      <WinLabel htmlFor="dept-select">Job Role:</WinLabel>
+                      <WinSelect
+                        id="dept-select"
+                        value={selectedDepartmentId ?? ""}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setSelectedDepartmentId(v || undefined);
+                          setMetricValues({});
+                        }}
+                      >
+                        <option value="">-- Choose your department --</option>
+                        {assignedDepartments.map((dept) => {
+                          const submitted = todayReports?.some((r: any) => r.department_id === dept.id);
+                          return (
+                            <option key={dept.id} value={dept.id}>
+                              {dept.name}{submitted ? " (✓ Submitted)" : ""}
+                            </option>
+                          );
+                        })}
+                      </WinSelect>
 
-              {selectedStaff && selectedDepartmentId && !alreadySubmittedForDept && metrics && (
-                <Card className="mt-6 animate-fade-in mb-6">
-                  <CardHeader>
-                    <CardTitle className="text-lg">
-                      Metrics for {format(reportDate, "PPP")} — {selectedDept?.name}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {metrics.map((metric) => (
-                      <div key={metric.id} className="space-y-1.5">
-                        <Label htmlFor={metric.id} className="text-sm">
-                          {metric.metric_name}
-                        </Label>
-                        <Input
-                          id={metric.id}
-                          type="number"
-                          step={metric.metric_type === "percentage" ? "0.1" : "1"}
-                          min="0"
-                          max={metric.metric_type === "percentage" ? "100" : undefined}
-                          placeholder={
-                            metric.metric_type === "percentage"
-                              ? "Enter percentage (0-100)"
-                              : "Enter value"
-                          }
-                          value={metricValues[metric.id] || ""}
-                          onChange={(e) =>
-                            setMetricValues((prev) => ({
-                              ...prev,
-                              [metric.id]: e.target.value,
-                            }))
-                          }
-                        />
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              )}
+                      {/* Multi-dept status */}
+                      {assignedDepartments.length > 1 && (
+                        <div style={{ marginTop: "8px" }}>
+                          <div style={{ ...BASE_FONT, fontWeight: "bold", marginBottom: "4px" }}>
+                            Assigned Departments ({assignedDepartments.length}):
+                          </div>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+                            {assignedDepartments.map((dept) => {
+                              const submitted = todayReports?.some((r: any) => r.department_id === dept.id);
+                              return (
+                                <span
+                                  key={dept.id}
+                                  style={{
+                                    ...BASE_FONT,
+                                    padding: "1px 6px",
+                                    border: "1px solid #808080",
+                                    background: submitted ? "#D4EDDA" : "#FFF3CD",
+                                    color: submitted ? "#155724" : "#856404",
+                                  }}
+                                >
+                                  {dept.name} {submitted ? "✓" : "✗"}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </WinGroupBox>
+                  )}
 
-              {selectedStaff && selectedDepartmentId && !alreadySubmittedForDept && metrics && (
-                <Card className="mt-10 mb-6 animate-fade-in">
-                  <CardHeader>
-                    <CardTitle className="text-lg">Daily Notes</CardTitle>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Share your daily progress and challenges
-                    </p>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="completed-notes" className="text-sm font-medium">
-                        ✓ Key tasks completed
-                      </Label>
-                      <Textarea
-                        id="completed-notes"
-                        placeholder="What did you accomplish today? List your Key tasks completed..."
-                        value={completedNotes}
-                        onChange={(e) => setCompletedNotes(e.target.value)}
-                        className="min-h-24 resize-none"
-                      />
-                    </div>
+                  {selectedStaff && assignedDepartments?.length === 0 && (
+                    <WinInfoBox variant="warning">
+                      No departments assigned. Please contact your administrator.
+                    </WinInfoBox>
+                  )}
 
-                    <div className="space-y-2">
-                      <Label htmlFor="blocker-notes" className="text-sm font-medium">
-                        ⚠️ Blockers
-                      </Label>
-                      <Textarea
-                        id="blocker-notes"
-                        placeholder="What challenges or blockers did you encounter? Include any issues that prevented progress..."
-                        value={blockerNotes}
-                        onChange={(e) => setBlockerNotes(e.target.value)}
-                        className="min-h-24 resize-none"
-                      />
-                    </div>
+                  {/* Already submitted */}
+                  {selectedStaff && selectedDepartmentId && alreadySubmittedForDept && (
+                    <WinInfoBox variant="success">
+                      <strong>Report already submitted</strong> for {selectedDept?.name} on {format(reportDate, "PPP")}.
+                      {departmentsNeedingReports.length > 0 && (
+                        <> Consider submitting for: {departmentsNeedingReports.map((d) => d.name).join(", ")}.</>
+                      )}
+                    </WinInfoBox>
+                  )}
 
-                    <div className="space-y-2">
-                      <Label htmlFor="uncompleted-notes" className="text-sm font-medium">
-                        → Priorities for the next day
-                      </Label>
-                      <Textarea
-                        id="uncompleted-notes"
-                        placeholder="What tasks are still in progress? List items that need to be carried over to tomorrow..."
-                        value={uncompletedNotes}
-                        onChange={(e) => setUncompletedNotes(e.target.value)}
-                        className="min-h-24 resize-none"
-                      />
-                    </div>
-
-                    <Button
-                      className="mt-6 w-full"
-                      size="lg"
-                      onClick={handleSubmit}
-                      disabled={submitting}
-                    >
-                      <Send className="mr-2 h-4 w-4" />
-                      {submitting ? "Submitting..." : "Submit Report"}
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-            </TabsContent>
-
-            {/* ==================== TIMESHEET TAB ==================== */}
-            <TabsContent value="timesheet" className="mt-6 space-y-0">
-              {alreadySubmittedTimesheet ? (
-                <Card className="border-success/30 bg-success/5">
-                  <CardContent className="flex items-center gap-3 py-6">
-                    <CheckCircle2 className="h-6 w-6 text-success" />
-                    <div>
-                      <p className="font-medium text-foreground">
-                        Timesheet already submitted
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        You've already submitted your timesheet for {format(reportDate, "PPP")}.
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card className="animate-fade-in overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/30 border-b">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Clock className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-                      Timesheet for {format(reportDate, "PPP")}
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Log your working hours — fill in start time, end time, and notes for each slot
-                    </p>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    {/* Header row */}
-                    <div className="hidden sm:grid grid-cols-[3rem_1fr_auto_1fr_2fr] gap-3 items-center px-5 py-3 bg-muted/40 border-b text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      <span>#</span>
-                      <span>Start</span>
-                      <span></span>
-                      <span>End</span>
-                      <span>Notes</span>
-                    </div>
-
-                    <div className="divide-y">
-                      {timesheetEntries.map((entry, index) => (
-                        <div
-                          key={index}
-                          className={cn(
-                            "grid grid-cols-1 sm:grid-cols-[3rem_1fr_auto_1fr_2fr] gap-3 items-center px-5 py-4 transition-colors duration-150",
-                            index % 2 === 0
-                              ? "bg-background"
-                              : "bg-muted/20",
-                            "hover:bg-violet-50/50 dark:hover:bg-violet-950/20"
-                          )}
-                        >
-                          {/* Row badge */}
-                          <RowBadge num={index + 1} />
-
-                          {/* Start time */}
-                          <Input
-                            type="time"
-                            value={entry.start_time}
+                  {/* Metrics */}
+                  {selectedStaff && selectedDepartmentId && !alreadySubmittedForDept && metrics && (
+                    <WinGroupBox legend={`Metrics — ${format(reportDate, "PPP")} — ${selectedDept?.name ?? ""}`} style={{ marginBottom: "10px" }}>
+                      {metrics.map((metric) => (
+                        <div key={metric.id} style={{ marginBottom: "6px" }}>
+                          <WinLabel htmlFor={metric.id}>{metric.metric_name}:</WinLabel>
+                          <WinInput
+                            id={metric.id}
+                            type="number"
+                            step={metric.metric_type === "percentage" ? "0.1" : "1"}
+                            min="0"
+                            max={metric.metric_type === "percentage" ? "100" : undefined}
+                            placeholder={metric.metric_type === "percentage" ? "0 – 100" : "Enter value"}
+                            value={metricValues[metric.id] || ""}
                             onChange={(e) =>
-                              updateTimesheetEntry(index, "start_time", e.target.value)
+                              setMetricValues((prev) => ({ ...prev, [metric.id]: e.target.value }))
                             }
-                            className="font-mono text-sm h-10"
-                          />
-
-                          {/* Arrow separator */}
-                          <span className="hidden sm:flex items-center justify-center text-muted-foreground font-bold text-lg">
-                            →
-                          </span>
-
-                          {/* End time */}
-                          <Input
-                            type="time"
-                            value={entry.end_time}
-                            onChange={(e) =>
-                              updateTimesheetEntry(index, "end_time", e.target.value)
-                            }
-                            className="font-mono text-sm h-10"
-                          />
-
-                          {/* Notes */}
-                          <Input
-                            type="text"
-                            placeholder="What did you work on?"
-                            value={entry.notes}
-                            onChange={(e) =>
-                              updateTimesheetEntry(index, "notes", e.target.value)
-                            }
-                            className="text-sm h-10"
+                            style={{ width: "200px" }}
                           />
                         </div>
                       ))}
-                    </div>
+                    </WinGroupBox>
+                  )}
 
-                    {/* Summary + Submit */}
-                    <div className="px-5 py-5 bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/30 border-t">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="text-sm text-muted-foreground">
-                          <span className="font-medium text-foreground">
-                            {timesheetEntries.filter((e) => e.start_time && e.end_time).length}
-                          </span>{" "}
-                          of 8 slots filled
-                        </div>
-                        <div className="text-sm font-medium text-violet-700 dark:text-violet-400">
-                          {(() => {
-                            const totalMinutes = timesheetEntries
-                              .filter((e) => e.start_time && e.end_time && e.end_time > e.start_time)
-                              .reduce((acc, e) => {
-                                const [sh, sm] = e.start_time.split(":").map(Number);
-                                const [eh, em] = e.end_time.split(":").map(Number);
-                                return acc + (eh * 60 + em) - (sh * 60 + sm);
-                              }, 0);
-                            const hours = Math.floor(totalMinutes / 60);
-                            const mins = totalMinutes % 60;
-                            return `${hours}h ${mins > 0 ? `${mins}m` : ""} total`;
-                          })()}
-                        </div>
+                  {/* Daily Notes */}
+                  {selectedStaff && selectedDepartmentId && !alreadySubmittedForDept && metrics && (
+                    <WinGroupBox legend="Daily Notes" style={{ marginBottom: "10px" }}>
+                      <p style={{ ...BASE_FONT, color: "#555", margin: "0 0 8px" }}>
+                        Share your daily progress and challenges.
+                      </p>
+
+                      <div style={{ marginBottom: "8px" }}>
+                        <WinLabel htmlFor="completed-notes">✓ Key tasks completed:</WinLabel>
+                        <WinTextarea
+                          id="completed-notes"
+                          placeholder="What did you accomplish today?"
+                          value={completedNotes}
+                          onChange={(e) => setCompletedNotes(e.target.value)}
+                        />
                       </div>
-                      <Button
-                        className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-violet-500/25 transition-all duration-200"
-                        size="lg"
-                        onClick={handleTimesheetSubmit}
-                        disabled={submittingTimesheet}
-                      >
-                        <Send className="mr-2 h-4 w-4" />
-                        {submittingTimesheet ? "Submitting..." : "Submit Timesheet"}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+
+                      <div style={{ marginBottom: "8px" }}>
+                        <WinLabel htmlFor="blocker-notes">⚠ Blockers:</WinLabel>
+                        <WinTextarea
+                          id="blocker-notes"
+                          placeholder="What challenges or blockers did you encounter?"
+                          value={blockerNotes}
+                          onChange={(e) => setBlockerNotes(e.target.value)}
+                        />
+                      </div>
+
+                      <div style={{ marginBottom: "10px" }}>
+                        <WinLabel htmlFor="uncompleted-notes">→ Priorities for the next day:</WinLabel>
+                        <WinTextarea
+                          id="uncompleted-notes"
+                          placeholder="What tasks need to be carried over?"
+                          value={uncompletedNotes}
+                          onChange={(e) => setUncompletedNotes(e.target.value)}
+                        />
+                      </div>
+
+                      <WinSeparator />
+
+                      <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: "6px" }}>
+                        <WinButton
+                          onClick={handleSubmit}
+                          disabled={submitting}
+                          style={{ minWidth: "120px" }}
+                        >
+                          <Send size={11} />
+                          {submitting ? "Submitting…" : "Submit Report"}
+                        </WinButton>
+                      </div>
+                    </WinGroupBox>
+                  )}
+                </div>
               )}
-            </TabsContent>
-          </Tabs>
+
+              {/* ════════ TIMESHEET TAB ════════ */}
+              {activeTab === "Timesheet" && (
+                <div>
+                  {alreadySubmittedTimesheet ? (
+                    <WinInfoBox variant="success">
+                      <strong>Timesheet already submitted</strong> for {format(reportDate, "PPP")}.
+                    </WinInfoBox>
+                  ) : (
+                    <WinGroupBox legend={`Timesheet — ${format(reportDate, "PPP")}`}>
+                      <p style={{ ...BASE_FONT, color: "#555", margin: "0 0 8px" }}>
+                        Log your working hours — fill in start time, end time, and notes for each slot.
+                      </p>
+
+                      {/* Table header */}
+                      <table style={{ width: "100%", borderCollapse: "collapse", ...BASE_FONT }}>
+                        <thead>
+                          <tr style={{ background: "#0A246A", color: "#fff" }}>
+                            <th style={{ padding: "3px 6px", textAlign: "center", width: "32px", border: "1px solid #404040" }}>#</th>
+                            <th style={{ padding: "3px 6px", textAlign: "left", border: "1px solid #404040" }}>Start</th>
+                            <th style={{ padding: "3px 6px", textAlign: "left", border: "1px solid #404040" }}>End</th>
+                            <th style={{ padding: "3px 6px", textAlign: "left", border: "1px solid #404040" }}>Notes</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {timesheetEntries.map((entry, index) => (
+                            <tr
+                              key={index}
+                              style={{ background: index % 2 === 0 ? "#E8E4DC" : "#D4D0C8" }}
+                            >
+                              <td style={{ padding: "2px 6px", textAlign: "center", border: "1px solid #808080", color: "#555" }}>
+                                {index + 1}
+                              </td>
+                              <td style={{ padding: "2px 4px", border: "1px solid #808080" }}>
+                                <WinInput
+                                  type="time"
+                                  value={entry.start_time}
+                                  onChange={(e) => updateTimesheetEntry(index, "start_time", e.target.value)}
+                                  style={{ width: "80px", fontFamily: "Courier New, monospace" }}
+                                />
+                              </td>
+                              <td style={{ padding: "2px 4px", border: "1px solid #808080" }}>
+                                <WinInput
+                                  type="time"
+                                  value={entry.end_time}
+                                  onChange={(e) => updateTimesheetEntry(index, "end_time", e.target.value)}
+                                  style={{ width: "80px", fontFamily: "Courier New, monospace" }}
+                                />
+                              </td>
+                              <td style={{ padding: "2px 4px", border: "1px solid #808080" }}>
+                                <WinInput
+                                  type="text"
+                                  placeholder="What did you work on?"
+                                  value={entry.notes}
+                                  onChange={(e) => updateTimesheetEntry(index, "notes", e.target.value)}
+                                />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+
+                      {/* Summary */}
+                      <div style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginTop: "8px",
+                        paddingTop: "6px",
+                        borderTop: "1px solid #808080",
+                      }}>
+                        <span style={BASE_FONT}>
+                          <strong>{timesheetEntries.filter((e) => e.start_time && e.end_time).length}</strong> / {timesheetEntries.length} slots filled
+                          {" — "}
+                          <strong>
+                            {(() => {
+                              const totalMinutes = timesheetEntries
+                                .filter((e) => e.start_time && e.end_time && e.end_time > e.start_time)
+                                .reduce((acc, e) => {
+                                  const [sh, sm] = e.start_time.split(":").map(Number);
+                                  const [eh, em] = e.end_time.split(":").map(Number);
+                                  return acc + (eh * 60 + em) - (sh * 60 + sm);
+                                }, 0);
+                              const hours = Math.floor(totalMinutes / 60);
+                              const mins = totalMinutes % 60;
+                              return `${hours}h${mins > 0 ? ` ${mins}m` : ""} total`;
+                            })()}
+                          </strong>
+                        </span>
+                        <WinButton
+                          onClick={handleTimesheetSubmit}
+                          disabled={submittingTimesheet}
+                          style={{ minWidth: "130px" }}
+                        >
+                          <Send size={11} />
+                          {submittingTimesheet ? "Submitting…" : "Submit Timesheet"}
+                        </WinButton>
+                      </div>
+                    </WinGroupBox>
+                  )}
+                </div>
+              )}
+
+            </div>
+          </div>
         )}
       </div>
     </AppLayout>
