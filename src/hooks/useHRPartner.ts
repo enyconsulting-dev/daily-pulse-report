@@ -34,15 +34,40 @@ export function useHREmployees() {
   });
 }
 
-/**
- * Dummy submit hook for future expansion
- */
 export function useHRSubmit() {
   return useMutation({
     mutationFn: async (data: any) => {
-      console.log('Dummy HR submit:', data);
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { employee_code, timesheet_date, timesheet_data } = data;
+      
+      const promises = timesheet_data.map((entry: any) => {
+        const payload = {
+          employee_code,
+          start_time: `${timesheet_date} ${entry.start_time}`,
+          end_time: `${timesheet_date} ${entry.end_time}`,
+          notes: entry.notes
+        };
+
+        const formData = new FormData();
+        formData.append("employee_code", payload.employee_code);
+        formData.append("start_time", payload.start_time);
+        formData.append("end_time", payload.end_time);
+        formData.append("notes", payload.notes);
+
+        
+        return fetch(`${BASE_URL}/timeclock`, {
+          method: 'POST',
+          body: formData
+        });
+      });
+      
+      const responses = await Promise.all(promises);
+      
+      for (const response of responses) {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+      }
+      
       return { success: true };
     }
   });
