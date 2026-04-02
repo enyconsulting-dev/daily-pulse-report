@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useDepartments, useAllStaffMembers } from "@/hooks/useStaffAndMetrics";
-import { format, subDays, subMonths, subYears, startOfWeek, endOfWeek, startOfMonth } from "date-fns";
+import { format, subDays, subMonths, subYears, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 import {
   Select,
   SelectContent,
@@ -45,7 +45,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-type DatePreset = "today" | "week" | "lastweek" | "month" | "2months" | "year" | "custom";
+type DatePreset = "today" | "week" | "lastweek" | "month" | "lastmonth" | "2months" | "year" | "custom";
 
 const COLORS = [
   "#3b82f6", // blue
@@ -75,6 +75,10 @@ function getDateRange(preset: DatePreset, customFrom: Date, customTo: Date) {
     }
     case "month":
       return { from: startOfMonth(today), to: today };
+    case "lastmonth": {
+      const lastMonthDay = subDays(startOfMonth(today), 1);
+      return { from: startOfMonth(lastMonthDay), to: endOfMonth(lastMonthDay) };
+    } 
     case "2months":
       return { from: subMonths(today, 2), to: today };
     case "year":
@@ -302,6 +306,7 @@ export default function Dashboard() {
     week: "This Week",
     lastweek: "Last Week",
     month: "This Month",
+    lastmonth: "Last Month",
     "2months": "Last 2 Months",
     year: "Last Year",
     custom: "Custom Range",
