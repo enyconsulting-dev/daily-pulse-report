@@ -1,5 +1,20 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import FormData from 'form-data';
+
+async function getRawBody(req: VercelRequest): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    let data = Buffer.alloc(0);
+    
+    req.on('data', (chunk: Buffer) => {
+      data = Buffer.concat([data, chunk]);
+    });
+    
+    req.on('end', () => {
+      resolve(data);
+    });
+    
+    req.on('error', reject);
+  });
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const apiKey = process.env.HR_PARTNER_API_KEY;
@@ -30,30 +45,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const contentType = req.headers['content-type'] || '';
       
       if (contentType.includes('multipart/form-data')) {
-        // Reconstruct FormData from request body
-        const formData = new FormData();
-        
-        // req.body should have the parsed form fields
-        if (typeof req.body === 'object' && req.body !== null) {
-          // Explicitly append fields
-          if (req.body.employee_code) {
-            formData.append('employee_code', String(req.body.employee_code));
-          }
-          if (req.body.start_time) {
-            formData.append('start_time', String(req.body.start_time));
-          }
-          if (req.body.end_time) {
-            formData.append('end_time', String(req.body.end_time));
-          }
-          if (req.body.notes) {
-            formData.append('notes', String(req.body.notes));
-          }
-        }
-        
-        (options as any).body = formData;
-        // FormData will set the proper Content-Type with boundary
-        Object.assign(options.headers, formData.getHeaders());
-        console.log(`Forwarding FormData with fields:`, Object.keys(req.body || {}));
+        // Read raw body and forward directly, preserving the multipart format and boundary
+        const rawBody = await getRawBody(req);
+        (options as any).body = rawBody;
+        (options.headers as any)['Content-Type'] = contentType;
+        console.log(`Forwarding raw multipart body, size: ${rawBody.length} bytes`);
       } else {
         (options.headers as any)['Content-Type'] = 'application/json';
         options.body = JSON.stringify(req.body);
