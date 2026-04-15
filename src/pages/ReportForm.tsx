@@ -206,19 +206,20 @@ export default function ReportForm() {
 
     setSubmittingTimesheet(true);
     try {
-      const rows = filledEntries.map((e) => ({
-        staff_id: selectedStaffId,
-        timesheet_date: reportDateStr,
-        start_time: `${reportDateStr} ${e.start_time}`,
-        end_time: `${reportDateStr} ${e.end_time}`,
-        notes: e.notes || null,
-      }));
+      // const rows = filledEntries.map((e) => ({
+      //   staff_id: selectedStaffId,
+      //   timesheet_date: reportDateStr,
+      //   start_time: `${reportDateStr} ${e.start_time}`,
+      //   end_time: `${reportDateStr} ${e.end_time}`,
+      //   notes: e.notes || null,
+      // }));
 
-      const { error } = await supabase.from("timesheets").insert(rows);
+      // const { error } = await supabase.from("timesheets").insert(rows);
 
-      if (error) throw error;
+      // if (error) throw error;
 
-      toast.success("Timesheet submitted successfully!");
+      // toast.success("Timesheet submitted successfully!");
+
       // setTimesheetEntries(getDefaultTimesheetEntries(reportDate));
       // queryClient.invalidateQueries({ queryKey: ["today_timesheet"] });
 

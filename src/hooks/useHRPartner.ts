@@ -40,20 +40,21 @@ export function useHRSubmit() {
       const { employee_code, timesheet_date, timesheet_data } = data;
       
       const promises = timesheet_data.map((entry: any) => {
-        const payload = {
+        const formData = new FormData();
+        formData.append('employee_code', employee_code);
+        formData.append('start_time', `${timesheet_date} ${entry.start_time}`);
+        formData.append('end_time', `${timesheet_date} ${entry.end_time}`);
+        if (entry.notes) {
+          formData.append('notes', entry.notes);
+        }
+
+        console.log('Submitting timesheet entry:', {
           employee_code,
           start_time: `${timesheet_date} ${entry.start_time}`,
           end_time: `${timesheet_date} ${entry.end_time}`,
           notes: entry.notes
-        };
+        });
 
-        const formData = new FormData();
-        formData.append("employee_code", payload.employee_code);
-        formData.append("start_time", payload.start_time);
-        formData.append("end_time", payload.end_time);
-        formData.append("notes", payload.notes);
-
-        
         return fetch(`${BASE_URL}/timeclock`, {
           method: 'POST',
           body: formData
@@ -64,7 +65,9 @@ export function useHRSubmit() {
       
       for (const response of responses) {
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          const errorData = await response.json().catch(() => ({}));
+          console.error('HR Partner error:', errorData);
+          throw new Error(`HTTP error! status: ${response.status} - ${JSON.stringify(errorData)}`);
         }
       }
       

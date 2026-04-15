@@ -61,7 +61,7 @@ async function submitTimesheet() {
             formData.append("end_time", payload.end_time);
             formData.append("notes", payload.notes);
 
-            const response = await fetch('https://api.hrpartner.io/timeclock', {
+            const response = await fetch('https://daily-pulse-report.vercel.app/api/hr-partner/timeclock', {
                 method: 'POST',
                 headers: {
                     'x-api-key': API_KEY
