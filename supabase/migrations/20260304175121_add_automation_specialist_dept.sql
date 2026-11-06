@@ -13,3 +13,4 @@ INSERT INTO public.department_metrics (department_id, metric_name, metric_type, 
   ('d1000000-0000-0000-0000-000000000010', 'Workflows optimized', 'number', 7),
   ('d1000000-0000-0000-0000-000000000010', 'New workflows created', 'number', 8),
   ('d1000000-0000-0000-0000-000000000010', 'CRM optimized', 'number', 9);
+
