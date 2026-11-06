@@ -1,8 +1,22 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import type { VercelRequest } from "@vercel/node";
 
 const COOKIE_NAME = "daily_pulse_admin";
 const SESSION_TTL_SECONDS = 8 * 60 * 60;
+
+export function getAdminPassword(): string | undefined {
+  return process.env.ADMIN_PASSWORD || process.env.VITE_ADMIN_PASSWORD;
+}
+
+export function getAdminSessionSecret(): string | undefined {
+  const configuredSecret = process.env.ADMIN_SESSION_SECRET;
+  if (configuredSecret) return configuredSecret;
+
+  const adminPassword = getAdminPassword();
+  return adminPassword
+    ? createHash("sha256").update(`daily-pulse-admin-session:${adminPassword}`).digest("hex")
+    : undefined;
+}
 
 function safeEqual(left: string, right: string): boolean {
   const leftBuffer = Buffer.from(left);
@@ -23,7 +37,7 @@ function sign(payload: string, secret: string): string {
 }
 
 export function isValidAdminSession(req: VercelRequest): boolean {
-  const secret = process.env.ADMIN_SESSION_SECRET;
+  const secret = getAdminSessionSecret();
   const token = getCookie(req);
   if (!secret || !token) return false;
 
@@ -70,6 +84,6 @@ export function isSecureRequest(req: VercelRequest): boolean {
 }
 
 export function adminPasswordMatches(password: unknown): boolean {
-  const configuredPassword = process.env.ADMIN_PASSWORD;
+  const configuredPassword = getAdminPassword();
   return typeof password === "string" && !!configuredPassword && safeEqual(password, configuredPassword);
 }

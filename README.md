@@ -4,8 +4,9 @@
 
 Configure these variables in Vercel. Keep the admin and service-role values server-only; do not prefix them with `VITE_`.
 
-- `ADMIN_PASSWORD`: admin login password (replaces the client-exposed `VITE_ADMIN_PASSWORD`).
-- `ADMIN_SESSION_SECRET`: a randomly generated secret used to sign the HttpOnly admin session cookie.
+- `VITE_ADMIN_PASSWORD`: existing admin login configuration, also used by the serverless login endpoint for compatibility.
+- `ADMIN_PASSWORD`: recommended server-only replacement for `VITE_ADMIN_PASSWORD`.
+- `ADMIN_SESSION_SECRET`: recommended randomly generated secret used to sign the HttpOnly admin session cookie. If unset, the session secret is derived from the configured admin password.
 - `SUPABASE_SERVICE_ROLE_KEY`: Supabase service-role key used only by the protected staff deletion API.
 - `SUPABASE_URL`: Supabase project URL for the deletion API. If omitted, the API uses `VITE_SUPABASE_URL`.
 

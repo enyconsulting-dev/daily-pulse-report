@@ -3,15 +3,18 @@ import {
   adminPasswordMatches,
   clearAdminSessionCookie,
   createAdminSessionCookie,
+  getAdminPassword,
+  getAdminSessionSecret,
   isSecureRequest,
   isValidAdminSession,
   requestIsSameOrigin,
 } from "../lib/adminSession";
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
-  const secret = process.env.ADMIN_SESSION_SECRET;
-  if (!secret || !process.env.ADMIN_PASSWORD) {
-    return res.status(500).json({ error: "Admin authentication is not configured" });
+  const secret = getAdminSessionSecret();
+  if (!secret || !getAdminPassword()) {
+    if (req.method === "GET") return res.status(200).json({ authenticated: false });
+    return res.status(503).json({ error: "Admin authentication is not configured. Set VITE_ADMIN_PASSWORD or ADMIN_PASSWORD." });
   }
 
   if (req.method === "GET") {
