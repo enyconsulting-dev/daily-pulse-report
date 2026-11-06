@@ -10,6 +10,17 @@ interface AdminAuthContextType {
 
 const AdminAuthContext = createContext<AdminAuthContextType | null>(null);
 
+async function readAuthResponse(response: Response): Promise<{ authenticated: boolean }> {
+  if (!response.headers.get("content-type")?.includes("application/json")) {
+    throw new Error("Admin authentication API is unavailable. Deploy the Vercel API routes to enable management login.");
+  }
+  const result = await response.json();
+  if (typeof result.authenticated !== "boolean") {
+    throw new Error("Admin authentication API returned an invalid response.");
+  }
+  return result;
+}
+
 export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -20,14 +31,22 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
 
     fetch("/api/admin-auth")
       .then(async (response) => {
-        if (!response.ok) throw new Error("Unable to verify admin session");
-        return response.json() as Promise<{ authenticated: boolean }>;
+        if (!response.ok) {
+          throw new Error(`Admin session check failed (HTTP ${response.status})`);
+        }
+        return readAuthResponse(response);
       })
       .then(({ authenticated }) => {
         if (active) setIsAuthenticated(authenticated);
       })
-      .catch(() => {
-        if (active) setAuthError("Unable to verify admin session. Please try again later.");
+      .catch((error: unknown) => {
+        if (!active) return;
+        setIsAuthenticated(false);
+        setAuthError(
+          error instanceof Error
+            ? `${error.message}. You can still try signing in below.`
+            : "Unable to verify the existing admin session. You can still try signing in below.",
+        );
       })
       .finally(() => {
         if (active) setIsLoading(false);
@@ -39,26 +58,37 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (password: string): Promise<boolean> => {
-    const response = await fetch("/api/admin-auth", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password }),
-    });
-
-    if (response.status === 401) return false;
-    if (!response.ok) {
-      const result = await response.json().catch(() => null);
-      throw new Error(result?.error || "Unable to sign in");
-    }
-
     setAuthError(null);
-    setIsAuthenticated(true);
-    return true;
+    try {
+      const response = await fetch("/api/admin-auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+
+      if (response.status === 401) return false;
+      if (!response.ok) {
+        const result = response.headers.get("content-type")?.includes("application/json")
+          ? await response.json().catch(() => null)
+          : null;
+        throw new Error(result?.error || `Unable to sign in (HTTP ${response.status})`);
+      }
+
+      const result = await readAuthResponse(response);
+      if (!result.authenticated) throw new Error("Admin authentication was not confirmed.");
+      setIsAuthenticated(true);
+      return true;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unable to sign in";
+      setAuthError(`${message}. Check that the admin authentication API is deployed and configured.`);
+      throw new Error(message);
+    }
   };
 
   const logout = async () => {
     const response = await fetch("/api/admin-auth", { method: "DELETE" });
     if (!response.ok) throw new Error("Unable to log out. Please try again.");
+    await readAuthResponse(response);
     setIsAuthenticated(false);
   };
 

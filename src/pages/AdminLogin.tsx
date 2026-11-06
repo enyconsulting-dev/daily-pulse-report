@@ -9,7 +9,7 @@ import { ClipboardList, Lock } from "lucide-react";
 import { toast } from "sonner";
 
 export default function AdminLogin() {
-  const { login } = useAdminAuth();
+  const { login, authError } = useAdminAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [password, setPassword] = useState("");
@@ -56,6 +56,11 @@ export default function AdminLogin() {
             </CardTitle>
           </CardHeader>
           <CardContent>
+            {authError && (
+              <p className="mb-4 text-sm text-destructive" role="alert">
+                {authError}
+              </p>
+            )}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="password">Admin Password</Label>
