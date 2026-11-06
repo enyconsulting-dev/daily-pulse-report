@@ -37,6 +37,7 @@ import {
 import { toast } from "sonner";
 import { Plus, UserX, UserCheck, Edit2, Save, X, Loader2, Trash2 } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
+import ManageDepartmentMetrics from "@/components/ManageDepartmentMetrics";
 
 export default function ManageStaff() {
   const queryClient = useQueryClient();
@@ -604,6 +605,7 @@ export default function ManageStaff() {
             </Table>
           </CardContent>
         </Card>
+        <ManageDepartmentMetrics />
       </div>
       <AlertDialog
         open={!!staffToDelete}
