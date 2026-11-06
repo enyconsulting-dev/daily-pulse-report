@@ -12,7 +12,9 @@ const AdminAuthContext = createContext<AdminAuthContextType | null>(null);
 
 async function readAuthResponse(response: Response): Promise<{ authenticated: boolean }> {
   if (!response.headers.get("content-type")?.includes("application/json")) {
-    throw new Error("Admin authentication API is unavailable. Deploy the Vercel API routes to enable management login.");
+    throw new Error(
+      `The admin authentication API returned a non-JSON response (HTTP ${response.status}). Verify that the Vercel function at /api/admin-auth is deployed.`,
+    );
   }
   const result = await response.json();
   if (typeof result.authenticated !== "boolean") {
@@ -71,7 +73,10 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
         const result = response.headers.get("content-type")?.includes("application/json")
           ? await response.json().catch(() => null)
           : null;
-        throw new Error(result?.error || `Unable to sign in (HTTP ${response.status})`);
+        throw new Error(
+          result?.error ||
+            `The admin authentication API returned HTTP ${response.status} without a JSON error. Check Vercel function logs for /api/admin-auth and confirm ADMIN_PASSWORD is set for Production.`,
+        );
       }
 
       const result = await readAuthResponse(response);
