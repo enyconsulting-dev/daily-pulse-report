@@ -1,5 +1,17 @@
 # Welcome to your Lovable project
 
+## Vercel environment variables
+
+Configure these variables in Vercel. Keep the admin and service-role values server-only; do not prefix them with `VITE_`.
+
+- `ADMIN_PASSWORD`: admin login password (replaces the client-exposed `VITE_ADMIN_PASSWORD`).
+- `ADMIN_SESSION_SECRET`: a randomly generated secret used to sign the HttpOnly admin session cookie.
+- `SUPABASE_SERVICE_ROLE_KEY`: Supabase service-role key used only by the protected staff deletion API.
+- `SUPABASE_URL`: Supabase project URL for the deletion API. If omitted, the API uses `VITE_SUPABASE_URL`.
+
+The service-role key bypasses row-level security and must never be exposed to browser code.
+The admin login and deletion endpoints are Vercel serverless functions; use `vercel dev` when running locally so those endpoints are available.
+
 ## Project info
 
 **URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID

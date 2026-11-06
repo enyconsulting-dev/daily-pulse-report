@@ -4,6 +4,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { ModeToggle } from "./ThemeToggle";
+import { toast } from "sonner";
 const navItems = [
   { to: "/", label: "Submit Report", icon: ClipboardList },
   { to: "/dashboard", label: "Dashboard", icon: BarChart3 },
@@ -16,9 +17,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { isAuthenticated, logout } = useAdminAuth();
 
-  const handleLogout = () => {
-    logout();
-    navigate("/");
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate("/");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to log out");
+    }
   };
 
   return (

@@ -15,19 +15,25 @@ export default function AdminLogin() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const from = (location.state as any)?.from?.pathname || "/dashboard";
+  const locationState = location.state as { from?: { pathname?: string } } | null;
+  const from = locationState?.from?.pathname || "/dashboard";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const success = login(password);
-    setLoading(false);
-    if (success) {
-      toast.success("Welcome, Admin!");
-      navigate(from, { replace: true });
-    } else {
-      toast.error("Incorrect admin password");
-      setPassword("");
+    try {
+      const success = await login(password);
+      if (success) {
+        toast.success("Welcome, Admin!");
+        navigate(from, { replace: true });
+      } else {
+        toast.error("Incorrect admin password");
+        setPassword("");
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to sign in");
+    } finally {
+      setLoading(false);
     }
   };
 

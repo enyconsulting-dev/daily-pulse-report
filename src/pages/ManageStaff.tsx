@@ -35,7 +35,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Archive, Plus, UserX, UserCheck, Edit2, Save, X, Loader2 } from "lucide-react";
+import { Plus, UserX, UserCheck, Edit2, Save, X, Loader2, Trash2 } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 
 export default function ManageStaff() {
@@ -58,8 +58,8 @@ export default function ManageStaff() {
   const [editedEmployeeCode, setEditedEmployeeCode] = useState("");
   const [editedPassword, setEditedPassword] = useState("");
   const [editedDeptIds, setEditedDeptIds] = useState<string[]>([]);
-  const [staffToArchive, setStaffToArchive] = useState<{ id: string; name: string } | null>(null);
-  const [archiving, setArchiving] = useState(false);
+  const [staffToDelete, setStaffToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const filteredStaff =
     filterDept === "all"
@@ -152,35 +152,30 @@ export default function ManageStaff() {
     }
   };
 
-  const handleArchive = async () => {
-    if (!staffToArchive) return;
+  const handleDelete = async () => {
+    if (!staffToDelete) return;
 
-    setArchiving(true);
+    setDeleting(true);
     try {
-      const { error: updateError } = await supabase
-        .from("staff_members")
-        .update({ is_active: false })
-        .eq("id", staffToArchive.id);
-      if (updateError) throw updateError;
+      const response = await fetch(`/api/staff?id=${encodeURIComponent(staffToDelete.id)}`, {
+        method: "DELETE",
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Unable to delete staff member");
 
-      const { error: assignmentError } = await supabase
-        .from("staff_department_assignments")
-        .delete()
-        .eq("staff_id", staffToArchive.id);
-      if (assignmentError) {
-        queryClient.invalidateQueries({ queryKey: ["all_staff_members"] });
-        queryClient.invalidateQueries({ queryKey: ["staff_members"] });
-        throw new Error(`Staff member was deactivated, but department assignments could not be removed: ${assignmentError.message}`);
-      }
-
-      toast.success(`${staffToArchive.name} archived. Historical reports and timesheets were preserved.`);
-      queryClient.invalidateQueries({ queryKey: ["all_staff_members"] });
-      queryClient.invalidateQueries({ queryKey: ["staff_members"] });
-      setStaffToArchive(null);
+      toast.success(`${staffToDelete.name} and their related records were permanently deleted.`);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["all_staff_members"] }),
+        queryClient.invalidateQueries({ queryKey: ["staff_members"] }),
+        queryClient.invalidateQueries({ queryKey: ["staff_assigned_departments", staffToDelete.id] }),
+        queryClient.invalidateQueries({ queryKey: ["today_report", staffToDelete.id] }),
+        queryClient.invalidateQueries({ queryKey: ["today_timesheet", staffToDelete.id] }),
+      ]);
+      setStaffToDelete(null);
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Unable to archive staff member");
+      toast.error(error instanceof Error ? error.message : "Unable to delete staff member");
     } finally {
-      setArchiving(false);
+      setDeleting(false);
     }
   };
 
@@ -588,10 +583,10 @@ export default function ManageStaff() {
                             variant="ghost"
                             size="sm"
                             className="text-destructive hover:text-destructive"
-                            onClick={() => setStaffToArchive({ id: staff.id, name: staff.name })}
+                            onClick={() => setStaffToDelete({ id: staff.id, name: staff.name })}
                           >
-                            <Archive className="mr-1 h-4 w-4" />
-                            Archive
+                            <Trash2 className="mr-1 h-4 w-4" />
+                            Delete
                           </Button>
                         </div>
                       )}
@@ -611,31 +606,31 @@ export default function ManageStaff() {
         </Card>
       </div>
       <AlertDialog
-        open={!!staffToArchive}
+        open={!!staffToDelete}
         onOpenChange={(open) => {
-          if (!open && !archiving) setStaffToArchive(null);
+          if (!open && !deleting) setStaffToDelete(null);
         }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Archive staff member?</AlertDialogTitle>
+            <AlertDialogTitle>Permanently delete staff member?</AlertDialogTitle>
             <AlertDialogDescription>
-              {staffToArchive?.name} will be deactivated and removed from their current department
-              assignments. Their staff record and historical reports and timesheets will be preserved.
+              This permanently deletes {staffToDelete?.name}, their department assignments, and all
+              associated reports, report entries, and timesheets. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={archiving}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              disabled={archiving}
+              disabled={deleting}
               onClick={(event) => {
                 event.preventDefault();
-                void handleArchive();
+                void handleDelete();
               }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {archiving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Archive staff member
+              {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Delete staff member
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

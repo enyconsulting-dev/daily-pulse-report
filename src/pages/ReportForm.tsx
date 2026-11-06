@@ -121,7 +121,8 @@ export default function ReportForm() {
     useCheckTodayReport(selectedStaffId, reportDateStr);
   const { data: todayTimesheets } = useCheckTodayTimesheet(selectedStaffId, reportDateStr);
 
-  const selectedStaff = allStaff?.find((s) => s.id === selectedStaffId) as any;
+  const activeStaff = allStaff?.filter((staff) => staff.is_active);
+  const selectedStaff = activeStaff?.find((s) => s.id === selectedStaffId) as any;
   const selectedDept = assignedDepartments?.find((d) => d.id === selectedDepartmentId);
   
   // Check if already submitted for this specific department
@@ -466,7 +467,7 @@ export default function ReportForm() {
               <SelectValue placeholder="Choose staff member..." />
             </SelectTrigger>
             <SelectContent>
-              {allStaff?.map((staff) => (
+              {activeStaff?.map((staff) => (
                 <SelectItem key={staff.id} value={staff.id}>
                   {staff.name}
                 </SelectItem>
