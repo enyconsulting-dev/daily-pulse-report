@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import type { Database } from "../src/integrations/supabase/types";
-import { isValidAdminSession, requestIsSameOrigin } from "../lib/adminSession";
+import { isValidAdminSession, requestIsSameOrigin } from "../lib/adminSession.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "DELETE") {

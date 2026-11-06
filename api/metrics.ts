@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import type { Database } from "../src/integrations/supabase/types";
-import { isValidAdminSession, requestIsSameOrigin } from "../lib/adminSession";
+import { isValidAdminSession, requestIsSameOrigin } from "../lib/adminSession.js";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 

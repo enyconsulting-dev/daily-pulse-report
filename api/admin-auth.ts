@@ -8,7 +8,7 @@ import {
   isSecureRequest,
   isValidAdminSession,
   requestIsSameOrigin,
-} from "../lib/adminSession";
+} from "../lib/adminSession.js";
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
   try {
