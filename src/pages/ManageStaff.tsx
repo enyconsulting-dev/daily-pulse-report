@@ -17,6 +17,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -25,7 +35,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, UserX, UserCheck, Edit2, Save, X, Loader2 } from "lucide-react";
+import { Archive, Plus, UserX, UserCheck, Edit2, Save, X, Loader2 } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 
 export default function ManageStaff() {
@@ -48,6 +58,8 @@ export default function ManageStaff() {
   const [editedEmployeeCode, setEditedEmployeeCode] = useState("");
   const [editedPassword, setEditedPassword] = useState("");
   const [editedDeptIds, setEditedDeptIds] = useState<string[]>([]);
+  const [staffToArchive, setStaffToArchive] = useState<{ id: string; name: string } | null>(null);
+  const [archiving, setArchiving] = useState(false);
 
   const filteredStaff =
     filterDept === "all"
@@ -137,6 +149,38 @@ export default function ManageStaff() {
     } else {
       queryClient.invalidateQueries({ queryKey: ["all_staff_members"] });
       queryClient.invalidateQueries({ queryKey: ["staff_members"] });
+    }
+  };
+
+  const handleArchive = async () => {
+    if (!staffToArchive) return;
+
+    setArchiving(true);
+    try {
+      const { error: updateError } = await supabase
+        .from("staff_members")
+        .update({ is_active: false })
+        .eq("id", staffToArchive.id);
+      if (updateError) throw updateError;
+
+      const { error: assignmentError } = await supabase
+        .from("staff_department_assignments")
+        .delete()
+        .eq("staff_id", staffToArchive.id);
+      if (assignmentError) {
+        queryClient.invalidateQueries({ queryKey: ["all_staff_members"] });
+        queryClient.invalidateQueries({ queryKey: ["staff_members"] });
+        throw new Error(`Staff member was deactivated, but department assignments could not be removed: ${assignmentError.message}`);
+      }
+
+      toast.success(`${staffToArchive.name} archived. Historical reports and timesheets were preserved.`);
+      queryClient.invalidateQueries({ queryKey: ["all_staff_members"] });
+      queryClient.invalidateQueries({ queryKey: ["staff_members"] });
+      setStaffToArchive(null);
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Unable to archive staff member");
+    } finally {
+      setArchiving(false);
     }
   };
 
@@ -254,7 +298,7 @@ export default function ManageStaff() {
             Manage Staff
           </h1>
           <p className="mt-1 text-muted-foreground">
-            Add new staff members or deactivate existing ones
+            Add, update, deactivate, or archive staff members
           </p>
         </div>
 
@@ -540,6 +584,15 @@ export default function ManageStaff() {
                               </>
                             )}
                           </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => setStaffToArchive({ id: staff.id, name: staff.name })}
+                          >
+                            <Archive className="mr-1 h-4 w-4" />
+                            Archive
+                          </Button>
                         </div>
                       )}
                     </TableCell>
@@ -557,6 +610,36 @@ export default function ManageStaff() {
           </CardContent>
         </Card>
       </div>
+      <AlertDialog
+        open={!!staffToArchive}
+        onOpenChange={(open) => {
+          if (!open && !archiving) setStaffToArchive(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive staff member?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {staffToArchive?.name} will be deactivated and removed from their current department
+              assignments. Their staff record and historical reports and timesheets will be preserved.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={archiving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={archiving}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleArchive();
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {archiving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Archive staff member
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }
